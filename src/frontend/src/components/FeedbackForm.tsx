@@ -6,6 +6,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ExternalBlob } from "../backend";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useSubmitFeedback } from "../hooks/useQueries";
 import { v4 as uuidv4 } from "../utils/uuid";
 import { StarRating } from "./StarRating";
@@ -21,6 +22,7 @@ interface FileEntry {
 }
 
 export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
+  const { t } = useLanguage();
   const [patientName, setPatientName] = useState("");
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState("");
@@ -42,15 +44,15 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim()) {
-      toast.error("Please enter your name.");
+      toast.error(t("feedback.error.name"));
       return;
     }
     if (rating === 0) {
-      toast.error("Please select a star rating.");
+      toast.error(t("feedback.error.rating"));
       return;
     }
     if (!reviewText.trim()) {
-      toast.error("Please write a review.");
+      toast.error(t("feedback.error.review"));
       return;
     }
 
@@ -62,7 +64,6 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
         const blob = ExternalBlob.fromBytes(bytes);
         mediaBlobs.push(blob);
       }
-
       await submitFeedback.mutateAsync({
         id: uuidv4(),
         nurseId,
@@ -72,15 +73,14 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
         mediaUrls: mediaBlobs,
         createdAt: BigInt(Date.now()) * BigInt(1_000_000),
       });
-
-      toast.success("Thank you! Your feedback has been submitted.");
+      toast.success(t("feedback.success"));
       setPatientName("");
       setRating(0);
       setReviewText("");
       setMediaEntries([]);
       onSuccess?.();
     } catch (err) {
-      toast.error("Failed to submit feedback. Please try again.");
+      toast.error(t("feedback.error.submit"));
       console.error(err);
     } finally {
       setUploading(false);
@@ -95,20 +95,19 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
     >
       <div>
         <Label htmlFor="patient-name" className="text-sm font-medium">
-          Your Name
+          {t("feedback.name")}
         </Label>
         <Input
           id="patient-name"
           value={patientName}
           onChange={(e) => setPatientName(e.target.value)}
-          placeholder="Enter your full name"
+          placeholder={t("feedback.name.placeholder")}
           className="mt-1"
           data-ocid="feedback.input"
         />
       </div>
-
       <div>
-        <Label className="text-sm font-medium">Rating</Label>
+        <Label className="text-sm font-medium">{t("feedback.rating")}</Label>
         <div className="mt-2" data-ocid="feedback.select">
           <StarRating
             rating={rating}
@@ -118,26 +117,22 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
           />
         </div>
       </div>
-
       <div>
         <Label htmlFor="review" className="text-sm font-medium">
-          Review
+          {t("feedback.comment")}
         </Label>
         <Textarea
           id="review"
           value={reviewText}
           onChange={(e) => setReviewText(e.target.value)}
-          placeholder="Share your experience with this nurse..."
+          placeholder={t("feedback.comment.placeholder")}
           rows={4}
           className="mt-1"
           data-ocid="feedback.textarea"
         />
       </div>
-
       <div>
-        <Label className="text-sm font-medium">
-          Upload Photos / Videos (optional)
-        </Label>
+        <Label className="text-sm font-medium">{t("feedback.media")}</Label>
         <label
           htmlFor="media-upload"
           className="mt-2 flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
@@ -145,7 +140,7 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
         >
           <Upload size={20} className="text-muted-foreground mb-1" />
           <span className="text-sm text-muted-foreground">
-            Click to upload photos or videos
+            {t("feedback.media.click")}
           </span>
           <input
             id="media-upload"
@@ -178,7 +173,6 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
           </div>
         )}
       </div>
-
       <Button
         type="submit"
         disabled={uploading || submitFeedback.isPending}
@@ -188,10 +182,10 @@ export function FeedbackForm({ nurseId, onSuccess }: FeedbackFormProps) {
         {uploading || submitFeedback.isPending ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Submitting...
+            {t("feedback.submitting")}
           </>
         ) : (
-          "Submit Feedback"
+          t("feedback.submit")
         )}
       </Button>
     </form>

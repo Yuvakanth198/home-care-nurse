@@ -12,6 +12,7 @@ import {
   Upload,
 } from "lucide-react";
 import { useState } from "react";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useRegisterNurse } from "../hooks/useQueries";
 import { v4 as uuidv4 } from "../utils/uuid";
 
@@ -54,6 +55,7 @@ type LocationState =
   | { status: "error"; message: string };
 
 export function NurseRegisterPage() {
+  const { t } = useLanguage();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [success, setSuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -87,12 +89,11 @@ export function NurseRegisterPage() {
       },
       (err) => {
         let message = "Unable to detect location. Please try again.";
-        if (err.code === err.PERMISSION_DENIED) {
+        if (err.code === err.PERMISSION_DENIED)
           message =
             "Location permission denied. Please allow location access in your browser settings.";
-        } else if (err.code === err.TIMEOUT) {
+        else if (err.code === err.TIMEOUT)
           message = "Location request timed out. Please try again.";
-        }
         setLocationState({ status: "error", message });
       },
       { timeout: 10000, maximumAge: 60000 },
@@ -103,7 +104,7 @@ export function NurseRegisterPage() {
     e.preventDefault();
     setSubmitError(null);
     if (form.latitude === undefined || form.longitude === undefined) {
-      setSubmitError("Please detect your location before submitting.");
+      setSubmitError(t("register.location.required"));
       return;
     }
     try {
@@ -127,10 +128,7 @@ export function NurseRegisterPage() {
       setForm(EMPTY);
       setLocationState({ status: "idle" });
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Registration failed. Please try again.";
+      const msg = err instanceof Error ? err.message : t("register.failed");
       setSubmitError(msg);
     }
   };
@@ -144,16 +142,13 @@ export function NurseRegisterPage() {
             <CrossIcon size={28} className="text-white" />
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white">
-            Join as a Certified Nurse
+            {t("register.title")}
           </h1>
-          <p className="mt-2 text-sm text-white/80">
-            Register your profile and connect with patients in your area
-          </p>
+          <p className="mt-2 text-sm text-white/80">{t("register.subtitle")}</p>
         </div>
       </div>
 
       <div className="container mx-auto max-w-2xl px-4 py-8">
-        {/* Success message */}
         {success && (
           <div
             className="mb-6 flex items-start gap-3 bg-accent/20 border border-accent text-accent-foreground rounded-xl px-5 py-4"
@@ -162,20 +157,18 @@ export function NurseRegisterPage() {
             <CheckCircle2 size={20} className="text-accent shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-foreground">
-                Registration Successful!
+                {t("register.success.title")}
               </p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Your profile will be reviewed and published shortly. Thank you
-                for joining Home Care Nurse.
+                {t("register.success.desc")}
               </p>
             </div>
           </div>
         )}
 
-        {/* Form */}
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
           <h2 className="text-lg font-bold text-foreground mb-5">
-            Nurse Registration Form
+            {t("register.formTitle")}
           </h2>
 
           <form
@@ -186,13 +179,13 @@ export function NurseRegisterPage() {
             {/* Full Name */}
             <div>
               <Label htmlFor="reg-name" className="text-sm font-medium">
-                Full Name <span className="text-destructive">*</span>
+                {t("register.name")} <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="reg-name"
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder="e.g. Priya Sharma"
+                placeholder={t("register.name.placeholder")}
                 required
                 className="mt-1.5 h-12"
                 data-ocid="register.input"
@@ -202,33 +195,34 @@ export function NurseRegisterPage() {
             {/* Nursing Council Reg No */}
             <div>
               <Label htmlFor="reg-number" className="text-sm font-medium">
-                Nursing Council Reg. No.{" "}
+                {t("register.regNo")}{" "}
                 <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="reg-number"
                 value={form.registrationNumber}
                 onChange={(e) => set("registrationNumber", e.target.value)}
-                placeholder="e.g. AP/RN/2018/04521"
+                placeholder={t("register.regNo.placeholder")}
                 required
                 className="mt-1.5 h-12"
                 data-ocid="register.input"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Your official Andhra Pradesh Nursing Council registration number
+                {t("register.regNo.hint")}
               </p>
             </div>
 
-            {/* Phone Number (required) */}
+            {/* Phone Number */}
             <div>
               <Label htmlFor="reg-phone" className="text-sm font-medium">
-                Phone Number <span className="text-destructive">*</span>
+                {t("register.phone")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="reg-phone"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
-                placeholder="+91 XXXXX XXXXX"
+                placeholder={t("register.phone.placeholder")}
                 inputMode="tel"
                 required
                 className="mt-1.5 h-12"
@@ -239,18 +233,20 @@ export function NurseRegisterPage() {
             {/* Address Section */}
             <div>
               <p className="text-sm font-semibold text-foreground mb-3">
-                Full Address <span className="text-destructive">*</span>
+                {t("register.address")}{" "}
+                <span className="text-destructive">*</span>
               </p>
               <div className="space-y-3">
                 <div>
                   <Label htmlFor="reg-village" className="text-sm font-medium">
-                    Village <span className="text-destructive">*</span>
+                    {t("register.village")}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="reg-village"
                     value={form.village}
                     onChange={(e) => set("village", e.target.value)}
-                    placeholder="e.g. Narasannapeta"
+                    placeholder={t("register.village.placeholder")}
                     required
                     className="mt-1.5 h-12"
                     data-ocid="register.input"
@@ -259,13 +255,14 @@ export function NurseRegisterPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label htmlFor="reg-mandal" className="text-sm font-medium">
-                      Mandal <span className="text-destructive">*</span>
+                      {t("register.mandal")}{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="reg-mandal"
                       value={form.mandal}
                       onChange={(e) => set("mandal", e.target.value)}
-                      placeholder="e.g. Narasannapeta"
+                      placeholder={t("register.mandal.placeholder")}
                       required
                       className="mt-1.5 h-12"
                       data-ocid="register.input"
@@ -276,13 +273,14 @@ export function NurseRegisterPage() {
                       htmlFor="reg-district"
                       className="text-sm font-medium"
                     >
-                      District <span className="text-destructive">*</span>
+                      {t("register.district")}{" "}
+                      <span className="text-destructive">*</span>
                     </Label>
                     <Input
                       id="reg-district"
                       value={form.district}
                       onChange={(e) => set("district", e.target.value)}
-                      placeholder="e.g. Srikakulam"
+                      placeholder={t("register.district.placeholder")}
                       required
                       className="mt-1.5 h-12"
                       data-ocid="register.input"
@@ -291,7 +289,8 @@ export function NurseRegisterPage() {
                 </div>
                 <div>
                   <Label htmlFor="reg-pincode" className="text-sm font-medium">
-                    6-digit Pincode <span className="text-destructive">*</span>
+                    {t("register.pincode")}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="reg-pincode"
@@ -302,7 +301,7 @@ export function NurseRegisterPage() {
                         e.target.value.replace(/\D/g, "").slice(0, 6),
                       )
                     }
-                    placeholder="e.g. 532001"
+                    placeholder={t("register.pincode.placeholder")}
                     inputMode="numeric"
                     maxLength={6}
                     required
@@ -313,18 +312,17 @@ export function NurseRegisterPage() {
               </div>
             </div>
 
-            {/* Share Your Location (required) */}
+            {/* Share Your Location */}
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
                 <MapPin size={16} style={{ color: "#0056b3" }} />
                 <p className="text-sm font-semibold text-foreground">
-                  Share Your Location{" "}
+                  {t("register.location")}{" "}
                   <span className="text-destructive">*</span>
                 </p>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Sharing your GPS coordinates helps patients find nurses nearby.
-                This is required to appear in location-based search results.
+                {t("register.location.hint")}
               </p>
 
               {locationState.status === "idle" && (
@@ -336,7 +334,7 @@ export function NurseRegisterPage() {
                   data-ocid="register.button"
                 >
                   <Navigation size={16} />
-                  Detect My Location
+                  {t("register.location.btn")}
                 </Button>
               )}
 
@@ -346,7 +344,9 @@ export function NurseRegisterPage() {
                   data-ocid="register.loading_state"
                 >
                   <Loader2 size={16} className="animate-spin" />
-                  <span className="text-sm">Detecting location...</span>
+                  <span className="text-sm">
+                    {t("register.location.detecting")}
+                  </span>
                 </div>
               )}
 
@@ -362,7 +362,7 @@ export function NurseRegisterPage() {
                     />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-green-700">
-                        Location captured!
+                        {t("register.location.captured")}
                       </p>
                       <p className="text-xs text-green-600 mt-0.5">
                         {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
@@ -383,7 +383,7 @@ export function NurseRegisterPage() {
                       }}
                       data-ocid="register.secondary_button"
                     >
-                      Remove
+                      {t("register.location.remove")}
                     </Button>
                   </div>
                 )}
@@ -394,7 +394,10 @@ export function NurseRegisterPage() {
                     className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3 mb-2"
                     data-ocid="register.error_state"
                   >
-                    {locationState.message}
+                    {
+                      (locationState as { status: "error"; message: string })
+                        .message
+                    }
                   </div>
                   <Button
                     type="button"
@@ -404,7 +407,7 @@ export function NurseRegisterPage() {
                     data-ocid="register.button"
                   >
                     <Navigation size={16} />
-                    Try Again
+                    {t("register.location.tryAgain")}
                   </Button>
                 </>
               )}
@@ -413,7 +416,8 @@ export function NurseRegisterPage() {
             {/* Years of Experience */}
             <div>
               <Label htmlFor="reg-exp" className="text-sm font-medium">
-                Years of Experience <span className="text-destructive">*</span>
+                {t("register.experience")}{" "}
+                <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="reg-exp"
@@ -422,7 +426,7 @@ export function NurseRegisterPage() {
                 max={60}
                 value={form.experience}
                 onChange={(e) => set("experience", e.target.value)}
-                placeholder="e.g. 5"
+                placeholder={t("register.experience.placeholder")}
                 required
                 className="mt-1.5 h-12"
                 data-ocid="register.input"
@@ -432,16 +436,16 @@ export function NurseRegisterPage() {
             {/* Bio */}
             <div>
               <Label htmlFor="reg-bio" className="text-sm font-medium">
-                Bio / Description{" "}
+                {t("register.bio")}{" "}
                 <span className="text-muted-foreground text-xs">
-                  (optional)
+                  {t("register.optional")}
                 </span>
               </Label>
               <Textarea
                 id="reg-bio"
                 value={form.bio}
                 onChange={(e) => set("bio", e.target.value)}
-                placeholder="Brief professional summary — your experience, areas served, approach to care..."
+                placeholder={t("register.bio.placeholder")}
                 rows={3}
                 className="mt-1.5"
                 data-ocid="register.textarea"
@@ -451,9 +455,9 @@ export function NurseRegisterPage() {
             {/* Photo upload */}
             <div>
               <Label className="text-sm font-medium">
-                Profile Photo{" "}
+                {t("register.photo")}{" "}
                 <span className="text-muted-foreground text-xs">
-                  (optional)
+                  {t("register.optional")}
                 </span>
               </Label>
               <label
@@ -466,10 +470,12 @@ export function NurseRegisterPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {form.photoFile ? form.photoFile.name : "Upload your photo"}
+                    {form.photoFile
+                      ? form.photoFile.name
+                      : t("register.photo.upload")}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    JPG, PNG, WEBP — max 5 MB
+                    {t("register.photo.hint")}
                   </p>
                 </div>
                 <input
@@ -497,25 +503,23 @@ export function NurseRegisterPage() {
                   htmlFor="reg-available"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Available for appointments
+                  {t("register.available")}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Patients can see and contact you right away
+                  {t("register.available.hint")}
                 </p>
               </div>
             </div>
 
-            {/* Error */}
             {(submitError || registerNurse.isError) && (
               <div
                 className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3"
                 data-ocid="register.error_state"
               >
-                {submitError || "Registration failed. Please try again."}
+                {submitError || t("register.failed")}
               </div>
             )}
 
-            {/* Submit */}
             <Button
               type="submit"
               disabled={registerNurse.isPending}
@@ -525,18 +529,17 @@ export function NurseRegisterPage() {
               {registerNurse.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting Registration...
+                  {t("register.submitting")}
                 </>
               ) : (
-                "Submit Registration"
+                t("register.submit")
               )}
             </Button>
           </form>
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          By registering, you confirm that your credentials are valid and you
-          are a licensed nurse under the Andhra Pradesh Nursing Council.
+          {t("register.legal")}
         </p>
       </div>
     </div>

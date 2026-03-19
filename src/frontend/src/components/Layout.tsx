@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Heart, Mail, Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { LanguageProvider, useLanguage } from "../contexts/LanguageContext";
 import { DisclaimerPopup } from "./DisclaimerPopup";
 
 function Logo() {
@@ -19,19 +20,57 @@ function Logo() {
   );
 }
 
-const NAV_LINKS = [
-  { label: "Home", to: "/" },
-  { label: "Find a Nurse", to: "/nurses" },
-  { label: "Register as Nurse", to: "/register" },
-  { label: "Nurse Dashboard", to: "/nurse-dashboard" },
-  { label: "How It Works", to: "/#how-it-works" },
-  { label: "Admin", to: "/admin" },
-];
+function LanguageToggle() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <div
+      className="flex items-center rounded-full border border-primary/30 overflow-hidden text-xs font-semibold"
+      style={{ background: "rgba(0,86,179,0.06)" }}
+    >
+      <button
+        type="button"
+        onClick={() => setLang("en")}
+        className={`px-2.5 py-1 transition-all ${
+          lang === "en"
+            ? "bg-primary text-white"
+            : "text-primary hover:bg-primary/10"
+        }`}
+        data-ocid="nav.toggle"
+        aria-label="Switch to English"
+      >
+        EN
+      </button>
+      <button
+        type="button"
+        onClick={() => setLang("te")}
+        className={`px-2.5 py-1 transition-all ${
+          lang === "te"
+            ? "bg-primary text-white"
+            : "text-primary hover:bg-primary/10"
+        }`}
+        data-ocid="nav.toggle"
+        aria-label="Switch to Telugu"
+      >
+        తె
+      </button>
+    </div>
+  );
+}
 
-export function Layout({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
+  const { t } = useLanguage();
+
+  const NAV_LINKS = [
+    { label: t("nav.home"), to: "/" },
+    { label: t("nav.findNurse"), to: "/nurses" },
+    { label: t("nav.register"), to: "/register" },
+    { label: t("nav.nurseDashboard"), to: "/nurse-dashboard" },
+    { label: t("nav.howItWorks"), to: "/#how-it-works" },
+    { label: t("nav.admin"), to: "/admin" },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -64,26 +103,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
+            <LanguageToggle />
             <Link
               to="/nurses"
               search={{ pincode: undefined }}
               className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
               data-ocid="nav.primary_button"
             >
-              Find Nurses
+              {t("nav.findNurses")}
             </Link>
           </div>
 
           {/* Mobile hamburger */}
-          <button
-            type="button"
-            className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Toggle menu"
-            data-ocid="nav.toggle"
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          <div className="md:hidden flex items-center gap-2">
+            <LanguageToggle />
+            <button
+              type="button"
+              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle menu"
+              data-ocid="nav.toggle"
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile menu */}
@@ -116,7 +159,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     onClick={() => setMobileOpen(false)}
                     data-ocid="nav.primary_button"
                   >
-                    Find Nurses
+                    {t("nav.findNurses")}
                   </Link>
                 </div>
               </nav>
@@ -154,12 +197,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </h4>
               <ul className="space-y-2">
                 {[
-                  { label: "Home", to: "/" },
-                  { label: "Find a Nurse", to: "/nurses" },
-                  { label: "Register as Nurse", to: "/register" },
-                  { label: "Nurse Dashboard", to: "/nurse-dashboard" },
-                  { label: "How It Works", to: "/#how-it-works" },
-                  { label: "Admin Panel", to: "/admin" },
+                  { label: t("nav.home"), to: "/" },
+                  { label: t("nav.findNurse"), to: "/nurses" },
+                  { label: t("nav.register"), to: "/register" },
+                  { label: t("nav.nurseDashboard"), to: "/nurse-dashboard" },
+                  { label: t("nav.howItWorks"), to: "/#how-it-works" },
+                  { label: t("nav.admin"), to: "/admin" },
                 ].map((l) => (
                   <li key={l.to}>
                     <Link
@@ -259,5 +302,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
     </div>
+  );
+}
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <LanguageProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </LanguageProvider>
   );
 }

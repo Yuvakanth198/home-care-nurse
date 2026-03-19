@@ -26,6 +26,7 @@ import type { ServiceProof } from "../backend";
 import { FeedbackCard, SampleFeedbackCard } from "../components/FeedbackCard";
 import { FeedbackForm } from "../components/FeedbackForm";
 import { StarRating } from "../components/StarRating";
+import { useLanguage } from "../contexts/LanguageContext";
 import { SAMPLE_FEEDBACK, SAMPLE_NURSES } from "../data/sampleNurses";
 import {
   useGetAggregateRating,
@@ -35,6 +36,7 @@ import {
 } from "../hooks/useQueries";
 
 function ServiceProofGallery({ nurseId }: { nurseId: string }) {
+  const { t } = useLanguage();
   const { data: proofs, isLoading } = useGetNurseServiceProofs(nurseId);
 
   if (isLoading) {
@@ -57,9 +59,7 @@ function ServiceProofGallery({ nurseId }: { nurseId: string }) {
         data-ocid="service_proof.empty_state"
       >
         <ImageIcon size={28} className="mx-auto text-muted-foreground mb-2" />
-        <p className="text-muted-foreground text-sm">
-          No service proofs uploaded yet.
-        </p>
+        <p className="text-muted-foreground text-sm">{t("profile.noProof")}</p>
       </div>
     );
   }
@@ -109,7 +109,7 @@ function ServiceProofGallery({ nurseId }: { nurseId: string }) {
                 variant="outline"
                 className="text-xs text-primary border-primary/40"
               >
-                Verified Service
+                {t("profile.serviceProof.badge")}
               </Badge>
             </div>
             {proof.description && (
@@ -153,6 +153,7 @@ function ServiceProofGallery({ nurseId }: { nurseId: string }) {
 }
 
 export function NurseProfilePage() {
+  const { t } = useLanguage();
   const { id } = useParams({ strict: false }) as { id: string };
   const navigate = useNavigate();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -206,7 +207,7 @@ export function NurseProfilePage() {
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors"
           data-ocid="nurse_profile.link"
         >
-          <ArrowLeft size={16} /> Back to Nurses
+          <ArrowLeft size={16} /> {t("profile.back")}
         </button>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -228,11 +229,9 @@ export function NurseProfilePage() {
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-                    {sampleNurse.name}
-                  </h1>
-                </div>
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+                  {sampleNurse.name}
+                </h1>
                 <Badge
                   className={
                     sampleNurse.isAvailable
@@ -240,13 +239,17 @@ export function NurseProfilePage() {
                       : "bg-muted text-muted-foreground"
                   }
                 >
-                  {sampleNurse.isAvailable ? "Available" : "Unavailable"}
+                  {sampleNurse.isAvailable
+                    ? t("profile.available")
+                    : t("profile.busy")}
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-4 mt-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock size={14} className="text-primary" />
-                  <span>{sampleNurse.experience} years experience</span>
+                  <span>
+                    {sampleNurse.experience} {t("profile.experience")}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin size={14} className="text-primary" />
@@ -271,14 +274,14 @@ export function NurseProfilePage() {
                 className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl call-btn font-semibold text-base transition-colors"
                 data-ocid="nurse_profile.primary_button"
               >
-                <Phone size={18} /> Call Now — {sampleNurse.phone}
+                <Phone size={18} /> {t("profile.callNow")} — {sampleNurse.phone}
               </a>
             </div>
           </div>
 
           <div className="mt-10">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              Patient Feedback
+              {t("profile.feedback")}
             </h2>
             <div className="space-y-3">
               {SAMPLE_FEEDBACK.slice(0, 3).map((fb, i) => (
@@ -287,10 +290,9 @@ export function NurseProfilePage() {
             </div>
           </div>
 
-          {/* Service Proof Gallery — sample nurse (empty for sample) */}
           <div className="mt-12">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              Service Proof Gallery
+              {t("profile.serviceProof")}
             </h2>
             <div
               className="text-center py-10 bg-muted/40 rounded-xl"
@@ -301,7 +303,7 @@ export function NurseProfilePage() {
                 className="mx-auto text-muted-foreground mb-2"
               />
               <p className="text-muted-foreground text-sm">
-                No service proofs uploaded yet.
+                {t("profile.noProof")}
               </p>
             </div>
           </div>
@@ -316,7 +318,9 @@ export function NurseProfilePage() {
         className="container mx-auto px-4 py-16 text-center"
         data-ocid="nurse_profile.error_state"
       >
-        <h2 className="text-xl font-bold text-foreground">Nurse not found</h2>
+        <h2 className="text-xl font-bold text-foreground">
+          {t("profile.notFound")}
+        </h2>
         <Button
           onClick={() =>
             navigate({ to: "/nurses", search: { pincode: undefined } })
@@ -324,7 +328,7 @@ export function NurseProfilePage() {
           className="mt-4"
           data-ocid="nurse_profile.link"
         >
-          Back to Nurses
+          {t("profile.back")}
         </Button>
       </div>
     );
@@ -337,7 +341,6 @@ export function NurseProfilePage() {
     .slice(0, 2)
     .toUpperCase();
   const photoUrl = nurse.profilePhoto ? nurse.profilePhoto.getDirectURL() : "";
-
   const locationParts = [nurse.village, nurse.mandal, nurse.district]
     .filter(Boolean)
     .join(", ");
@@ -355,7 +358,7 @@ export function NurseProfilePage() {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-6 transition-colors"
         data-ocid="nurse_profile.link"
       >
-        <ArrowLeft size={16} /> Back to Nurses
+        <ArrowLeft size={16} /> {t("profile.back")}
       </button>
 
       <motion.div
@@ -382,6 +385,14 @@ export function NurseProfilePage() {
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                   {nurse.name}
                 </h1>
+                {nurse.registrationNumber && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {t("profile.reg")} {nurse.registrationNumber}{" "}
+                    <span className="inline-flex items-center gap-0.5 bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                      ✓ {t("profile.verified")}
+                    </span>
+                  </p>
+                )}
               </div>
               <Badge
                 className={
@@ -390,14 +401,15 @@ export function NurseProfilePage() {
                     : "bg-muted text-muted-foreground"
                 }
               >
-                {nurse.isAvailable ? "Available" : "Unavailable"}
+                {nurse.isAvailable ? t("profile.available") : t("profile.busy")}
               </Badge>
             </div>
-
             <div className="flex flex-wrap gap-4 mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock size={14} className="text-primary" />
-                <span>{Number(nurse.experience)} years experience</span>
+                <span>
+                  {Number(nurse.experience)} {t("profile.experience")}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin size={14} className="text-primary" />
@@ -424,7 +436,7 @@ export function NurseProfilePage() {
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl call-btn font-semibold text-base transition-colors"
                 data-ocid="nurse_profile.primary_button"
               >
-                <Phone size={18} /> Call Now — {nurse.phone}
+                <Phone size={18} /> {t("profile.callNow")} — {nurse.phone}
               </a>
 
               <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
@@ -434,7 +446,7 @@ export function NurseProfilePage() {
                     className="gap-2 border-primary text-primary"
                     data-ocid="nurse_profile.open_modal_button"
                   >
-                    <MessageSquarePlus size={16} /> Leave Feedback
+                    <MessageSquarePlus size={16} /> {t("profile.leaveReview")}
                   </Button>
                 </DialogTrigger>
                 <DialogContent
@@ -442,7 +454,9 @@ export function NurseProfilePage() {
                   data-ocid="nurse_profile.dialog"
                 >
                   <DialogHeader>
-                    <DialogTitle>Leave Feedback for {nurse.name}</DialogTitle>
+                    <DialogTitle>
+                      {t("feedback.title")} {nurse.name}
+                    </DialogTitle>
                   </DialogHeader>
                   <FeedbackForm
                     nurseId={nurse.id}
@@ -457,7 +471,7 @@ export function NurseProfilePage() {
         {/* Feedback section */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-foreground mb-4">
-            Patient Feedback
+            {t("profile.feedback")}
           </h2>
           {feedbackLoading ? (
             <div className="space-y-3" data-ocid="feedback.loading_state">
@@ -480,16 +494,14 @@ export function NurseProfilePage() {
                 size={32}
                 className="mx-auto text-muted-foreground mb-2"
               />
-              <p className="text-muted-foreground">
-                No feedback yet. Be the first to share your experience!
-              </p>
+              <p className="text-muted-foreground">{t("profile.noFeedback")}</p>
               <Button
                 onClick={() => setFeedbackOpen(true)}
                 variant="outline"
                 className="mt-3 gap-2 border-primary text-primary"
                 data-ocid="feedback.open_modal_button"
               >
-                <MessageSquarePlus size={16} /> Leave Feedback
+                <MessageSquarePlus size={16} /> {t("profile.leaveReview")}
               </Button>
             </div>
           )}
@@ -498,7 +510,7 @@ export function NurseProfilePage() {
         {/* Service Proof Gallery */}
         <div className="mt-12">
           <h2 className="text-xl font-bold text-foreground mb-4">
-            Service Proof Gallery
+            {t("profile.serviceProof")}
           </h2>
           <ServiceProofGallery nurseId={nurse.id} />
         </div>

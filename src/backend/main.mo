@@ -133,6 +133,38 @@ actor {
     };
   };
 
+  // Public - nurse can toggle their own availability using credentials
+  public shared func setNurseAvailability(registrationNumber : Text, phone : Text, isAvailable : Bool) : async () {
+    let allNurses = nurses.values().toArray();
+    let found = allNurses.find(
+      func(nurse) {
+        nurse.registrationNumber == registrationNumber and nurse.phone == phone
+      }
+    );
+    switch (found) {
+      case (null) { Runtime.trap("Nurse not found. Check your registration number and phone.") };
+      case (?nurse) {
+        let updated : Nurse = {
+          id = nurse.id;
+          name = nurse.name;
+          registrationNumber = nurse.registrationNumber;
+          phone = nurse.phone;
+          village = nurse.village;
+          mandal = nurse.mandal;
+          district = nurse.district;
+          pincode = nurse.pincode;
+          experience = nurse.experience;
+          bio = nurse.bio;
+          profilePhoto = nurse.profilePhoto;
+          isAvailable = isAvailable;
+          latitude = nurse.latitude;
+          longitude = nurse.longitude;
+        };
+        nurses.add(nurse.id, updated);
+      };
+    };
+  };
+
   // Admin-only delete
   public shared ({ caller }) func deleteNurse(nurseId : Text) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {

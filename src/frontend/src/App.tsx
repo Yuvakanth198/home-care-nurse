@@ -91,6 +91,7 @@ declare module "@tanstack/react-router" {
 }
 
 function SplashScreen() {
+  const isTelugu = localStorage.getItem("hcn_lang") === "te";
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white">
       <motion.div
@@ -112,7 +113,7 @@ function SplashScreen() {
           className="text-3xl font-bold mt-2"
           style={{ color: "#0056b3", fontFamily: "Inter, sans-serif" }}
         >
-          Welcome to Home Care Nurse
+          {isTelugu ? "హోమ్ కేర్ నర్స్ కు స్వాగతం" : "Welcome to Home Care Nurse"}
         </h1>
         <div className="mt-4 flex gap-1.5">
           {[0, 1, 2].map((i) => (

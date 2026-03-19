@@ -240,3 +240,29 @@ export function useListAllServiceProofs() {
     enabled: !!actor,
   });
 }
+
+export function useSetNurseAvailability() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      registrationNumber,
+      phone,
+      isAvailable,
+    }: {
+      registrationNumber: string;
+      phone: string;
+      isAvailable: boolean;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return (actor as any).setNurseAvailability(
+        registrationNumber,
+        phone,
+        isAvailable,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["nurses"] });
+    },
+  });
+}

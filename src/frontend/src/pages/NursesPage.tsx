@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import type { Nurse } from "../backend";
 import { NurseCard } from "../components/NurseCard";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useFilterByPincode, useListAllNurses } from "../hooks/useQueries";
 
 const SKELETON_IDS = ["sk-1", "sk-2", "sk-3", "sk-4", "sk-5", "sk-6"];
@@ -42,6 +43,7 @@ type GeoState =
   | { status: "error"; message: string };
 
 export function NursesPage() {
+  const { t } = useLanguage();
   const searchParams = useSearch({ strict: false }) as { pincode?: string };
   const [pincode, setPincode] = useState(searchParams.pincode || "");
   const [activeFilter, setActiveFilter] = useState(searchParams.pincode || "");
@@ -62,11 +64,9 @@ export function NursesPage() {
 
   const isPincodeFiltered = activeFilter.length === 6;
 
-  // Pincode tab nurses
   const pincodeNurses = isPincodeFiltered ? filteredNurses : allNurses;
   const pincodeLoading = isPincodeFiltered ? loadingFiltered : loadingAll;
 
-  // Nearby tab nurses (with distance)
   const nearbyNursesWithDist: { nurse: Nurse; distanceKm: number }[] =
     geoState.status === "success" && allNurses
       ? allNurses
@@ -84,10 +84,7 @@ export function NursesPage() {
           .sort((a, b) => a.distanceKm - b.distanceKm)
       : [];
 
-  const handlePincodeSearch = () => {
-    setActiveFilter(pincode);
-  };
-
+  const handlePincodeSearch = () => setActiveFilter(pincode);
   const handleClearPincode = () => {
     setPincode("");
     setActiveFilter("");
@@ -103,30 +100,26 @@ export function NursesPage() {
     }
     setGeoState({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      (pos) =>
         setGeoState({
           status: "success",
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-        });
-      },
+        }),
       (err) => {
         let message = "Unable to detect location. Please try again.";
-        if (err.code === err.PERMISSION_DENIED) {
+        if (err.code === err.PERMISSION_DENIED)
           message =
             "Location permission denied. Please allow location access in your browser settings.";
-        } else if (err.code === err.TIMEOUT) {
+        else if (err.code === err.TIMEOUT)
           message = "Location request timed out. Please try again.";
-        }
         setGeoState({ status: "error", message });
       },
       { timeout: 10000, maximumAge: 60000 },
     );
   };
 
-  const handleClearNearby = () => {
-    setGeoState({ status: "idle" });
-  };
+  const handleClearNearby = () => setGeoState({ status: "idle" });
 
   const renderSkeletons = () => (
     <div
@@ -153,14 +146,11 @@ export function NursesPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-          Find a Nurse
+          {t("nurses.title")}
         </h1>
-        <p className="mt-1 text-muted-foreground">
-          Browse our network of verified home care nurses
-        </p>
+        <p className="mt-1 text-muted-foreground">{t("nurses.subtitle")}</p>
       </div>
 
-      {/* Filter Tabs */}
       <div
         className="bg-card border border-border rounded-xl p-4 mb-8 shadow-xs"
         data-ocid="nurses.panel"
@@ -176,7 +166,7 @@ export function NursesPage() {
               data-ocid="nurses.tab"
             >
               <Search size={14} />
-              Filter by Pincode
+              {t("nurses.tab.pincode")}
             </TabsTrigger>
             <TabsTrigger
               value="nearby"
@@ -184,16 +174,15 @@ export function NursesPage() {
               data-ocid="nurses.tab"
             >
               <Navigation size={14} />
-              Nearby (10–15 km)
+              {t("nurses.tab.nearby")}
             </TabsTrigger>
           </TabsList>
 
-          {/* Pincode Filter */}
           <TabsContent value="pincode" className="mt-0">
             <div className="flex items-center gap-2 mb-3">
               <SlidersHorizontal size={16} className="text-primary" />
               <span className="text-sm font-medium text-foreground">
-                Search nurses by 6-digit pincode
+                {t("nurses.pincode.label")}
               </span>
             </div>
             <div className="flex gap-2">
@@ -204,7 +193,7 @@ export function NursesPage() {
                   onChange={(e) =>
                     setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  placeholder="Enter 6-digit Pincode"
+                  placeholder={t("nurses.pincode.placeholder")}
                   className="border-0 shadow-none focus-visible:ring-0 p-0 h-10"
                   maxLength={6}
                   inputMode="numeric"
@@ -217,7 +206,7 @@ export function NursesPage() {
                 className="bg-primary text-primary-foreground"
                 data-ocid="nurses.primary_button"
               >
-                Search
+                {t("nurses.search")}
               </Button>
               {activeFilter && (
                 <Button
@@ -225,27 +214,24 @@ export function NursesPage() {
                   onClick={handleClearPincode}
                   data-ocid="nurses.secondary_button"
                 >
-                  Clear
+                  {t("nurses.clear")}
                 </Button>
               )}
             </div>
             {isPincodeFiltered && (
               <p className="mt-2 text-xs text-muted-foreground">
-                Showing results for pincode: <strong>{activeFilter}</strong>
+                {t("nurses.showing")} <strong>{activeFilter}</strong>
               </p>
             )}
           </TabsContent>
 
-          {/* Nearby Filter */}
           <TabsContent value="nearby" className="mt-0">
             <div className="flex items-center gap-2 mb-3">
               <MapPin size={16} className="text-primary" />
               <span className="text-sm font-medium text-foreground">
-                Find nurses within {radiusKm} km of your location
+                {t("nurses.nearby.within")} {radiusKm} {t("nurses.nearby.km")}
               </span>
             </div>
-
-            {/* Radius selector */}
             <div className="flex gap-2 mb-4">
               {[10, 12, 15].map((km) => (
                 <button
@@ -271,10 +257,9 @@ export function NursesPage() {
                 data-ocid="nurses.primary_button"
               >
                 <Navigation size={18} />
-                Use My Location
+                {t("nurses.nearby.detect")}
               </Button>
             )}
-
             {geoState.status === "loading" && (
               <div
                 className="flex items-center justify-center gap-3 py-4 text-primary"
@@ -282,11 +267,10 @@ export function NursesPage() {
               >
                 <Loader2 size={20} className="animate-spin" />
                 <span className="text-sm font-medium">
-                  Detecting your location...
+                  {t("nurses.nearby.detecting")}
                 </span>
               </div>
             )}
-
             {geoState.status === "success" && (
               <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -295,7 +279,7 @@ export function NursesPage() {
                     className="text-sm font-medium"
                     style={{ color: "#0056b3" }}
                   >
-                    Location detected ({geoState.lat.toFixed(4)},{" "}
+                    {t("nurses.nearby.detected")} ({geoState.lat.toFixed(4)},{" "}
                     {geoState.lng.toFixed(4)})
                   </span>
                 </div>
@@ -306,35 +290,33 @@ export function NursesPage() {
                   className="text-xs text-muted-foreground hover:text-destructive h-7 px-2"
                   data-ocid="nurses.secondary_button"
                 >
-                  Clear
+                  {t("nurses.clear")}
                 </Button>
               </div>
             )}
-
             {geoState.status === "error" && (
-              <div
-                className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3 mb-3"
-                data-ocid="nurses.error_state"
-              >
-                {geoState.message}
-              </div>
-            )}
-            {geoState.status === "error" && (
-              <Button
-                onClick={handleDetectLocation}
-                variant="outline"
-                className="w-full mt-2 gap-2"
-                data-ocid="nurses.secondary_button"
-              >
-                <Navigation size={16} />
-                Try Again
-              </Button>
+              <>
+                <div
+                  className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3 mb-3"
+                  data-ocid="nurses.error_state"
+                >
+                  {geoState.message}
+                </div>
+                <Button
+                  onClick={handleDetectLocation}
+                  variant="outline"
+                  className="w-full mt-2 gap-2"
+                  data-ocid="nurses.secondary_button"
+                >
+                  <Navigation size={16} />
+                  {t("nurses.nearby.tryAgain")}
+                </Button>
+              </>
             )}
           </TabsContent>
         </Tabs>
       </div>
 
-      {/* Results */}
       {activeTab === "pincode" ? (
         pincodeLoading ? (
           renderSkeletons()
@@ -349,13 +331,13 @@ export function NursesPage() {
             <UserX size={48} className="mx-auto text-muted-foreground mb-4" />
             <h3 className="font-semibold text-lg text-foreground mb-1">
               {isPincodeFiltered
-                ? "No registered nurses found in this area"
-                : "No nurses registered yet"}
+                ? t("nurses.noResults")
+                : t("nurses.noRegistered")}
             </h3>
             <p className="text-muted-foreground text-sm">
               {isPincodeFiltered
-                ? `No nurse has registered for pincode ${activeFilter}. Please try a different pincode.`
-                : "Be the first to register as a nurse and help your community."}
+                ? `${t("nurses.noResults.hint")} ${activeFilter}. ${t("nurses.noResults.hint2")}`
+                : t("nurses.noRegistered.hint")}
             </p>
             {isPincodeFiltered && (
               <Button
@@ -364,21 +346,23 @@ export function NursesPage() {
                 className="mt-4"
                 data-ocid="nurses.secondary_button"
               >
-                Show All Nurses
+                {t("nurses.showAll")}
               </Button>
             )}
           </div>
         )
-      ) : // Nearby tab results
-      geoState.status === "success" ? (
+      ) : geoState.status === "success" ? (
         loadingAll ? (
           renderSkeletons()
         ) : nearbyNursesWithDist.length > 0 ? (
           <>
             <p className="text-sm text-muted-foreground mb-4">
-              Found <strong>{nearbyNursesWithDist.length}</strong> nurse
-              {nearbyNursesWithDist.length !== 1 ? "s" : ""} within {radiusKm}{" "}
-              km
+              {t("nurses.nearby.found")}{" "}
+              <strong>{nearbyNursesWithDist.length}</strong>{" "}
+              {nearbyNursesWithDist.length !== 1
+                ? t("nurses.nearby.foundPlural")
+                : t("nurses.nearby.found")}{" "}
+              {t("nurses.nearby.foundWithin")} {radiusKm} km
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {nearbyNursesWithDist.map(({ nurse, distanceKm }, i) => (
@@ -398,11 +382,11 @@ export function NursesPage() {
               className="mx-auto text-muted-foreground mb-4"
             />
             <h3 className="font-semibold text-lg text-foreground mb-1">
-              No nurses found nearby
+              {t("nurses.nearby.noResults")}
             </h3>
             <p className="text-muted-foreground text-sm">
-              No nurses with location data are registered within {radiusKm} km
-              of your location. Try increasing the radius or search by pincode.
+              {t("nurses.nearby.noResults.hint")} {radiusKm}{" "}
+              {t("nurses.nearby.noResults.hint2")}
             </p>
           </div>
         )
@@ -413,11 +397,10 @@ export function NursesPage() {
             className="mx-auto text-muted-foreground mb-4"
           />
           <h3 className="font-semibold text-lg text-foreground mb-1">
-            Detect Your Location
+            {t("nurses.nearby.detectPrompt")}
           </h3>
           <p className="text-muted-foreground text-sm">
-            Click "Use My Location" above to find nurses near you within{" "}
-            {radiusKm} km.
+            {t("nurses.nearby.detectHint")} {radiusKm} {t("nurses.nearby.km2")}
           </p>
         </div>
       )}

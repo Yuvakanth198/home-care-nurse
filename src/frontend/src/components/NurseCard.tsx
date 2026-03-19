@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "@tanstack/react-router";
 import { Clock, MapPin, Navigation, Phone } from "lucide-react";
 import type { Nurse } from "../backend";
+import { useLanguage } from "../contexts/LanguageContext";
 
 interface NurseCardProps {
   nurse: Nurse;
@@ -12,6 +13,7 @@ interface NurseCardProps {
 }
 
 export function NurseCard({ nurse, index = 1, distanceKm }: NurseCardProps) {
+  const { t } = useLanguage();
   let photoUrl = "";
   try {
     photoUrl = nurse.profilePhoto ? nurse.profilePhoto.getDirectURL() : "";
@@ -42,7 +44,6 @@ export function NurseCard({ nurse, index = 1, distanceKm }: NurseCardProps) {
       data-ocid={`nurses.item.${index}`}
     >
       <CardContent className="p-5">
-        {/* Distance badge */}
         {distanceKm !== undefined && (
           <div className="mb-3 flex justify-end">
             <span
@@ -50,12 +51,11 @@ export function NurseCard({ nurse, index = 1, distanceKm }: NurseCardProps) {
               style={{ background: "#dbeafe", color: "#0056b3" }}
             >
               <Navigation size={11} />
-              {distanceKm.toFixed(1)} km away
+              {distanceKm.toFixed(1)} {t("nurses.away")}
             </span>
           </div>
         )}
         <div className="flex gap-4 items-start">
-          {/* Circular profile with ring */}
           <div className="shrink-0">
             <Avatar
               className="w-20 h-20 ring-2 ring-blue-600 ring-offset-2"
@@ -74,8 +74,6 @@ export function NurseCard({ nurse, index = 1, distanceKm }: NurseCardProps) {
               </AvatarFallback>
             </Avatar>
           </div>
-
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <Link to="/nurses/$id" params={{ id: nurse.id }}>
@@ -87,45 +85,40 @@ export function NurseCard({ nurse, index = 1, distanceKm }: NurseCardProps) {
                 </h3>
               </Link>
               <Badge
-                className={`shrink-0 text-xs ${
-                  nurse.isAvailable
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}
+                className={`shrink-0 text-xs ${nurse.isAvailable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
               >
-                {nurse.isAvailable ? "Available" : "Busy"}
+                {nurse.isAvailable ? t("card.available") : t("card.busy")}
               </Badge>
             </div>
-
             {nurse.registrationNumber && (
               <div className="flex items-center mt-0.5 flex-wrap gap-1">
                 <span className="text-xs text-gray-500">
-                  Reg: {nurse.registrationNumber}
+                  {t("card.reg")} {nurse.registrationNumber}
                 </span>
                 <span className="inline-flex items-center gap-0.5 bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  ✓ Verified
+                  {t("card.verified")}
                 </span>
               </div>
             )}
-
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Clock size={12} style={{ color: "#0056b3" }} />
-                <span>{Number(nurse.experience)} yrs exp</span>
+                <span>
+                  {Number(nurse.experience)} {t("card.experience")}
+                </span>
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <MapPin size={12} style={{ color: "#0056b3" }} />
                 <span>{locationDisplay}</span>
               </div>
             </div>
-
             <a
               href={`tel:${nurse.phone}`}
               className="call-btn mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm"
               data-ocid={`nurses.button.${index}`}
             >
               <Phone size={15} />
-              Call Now
+              {t("card.callNow")}
             </a>
           </div>
         </div>
@@ -165,6 +158,7 @@ export function SampleNurseCard({
   district,
   index = 1,
 }: SampleNurseCardProps) {
+  const { t } = useLanguage();
   const locationParts = [village, mandal, district].filter(Boolean).join(", ");
   const locationDisplay = locationParts
     ? `${locationParts} — ${pincode}`
@@ -195,7 +189,6 @@ export function SampleNurseCard({
               </AvatarFallback>
             </Avatar>
           </div>
-
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <Link to="/nurses/$id" params={{ id }}>
@@ -207,45 +200,40 @@ export function SampleNurseCard({
                 </h3>
               </Link>
               <Badge
-                className={`shrink-0 text-xs ${
-                  isAvailable
-                    ? "bg-green-100 text-green-700"
-                    : "bg-gray-100 text-gray-500"
-                }`}
+                className={`shrink-0 text-xs ${isAvailable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
               >
-                {isAvailable ? "Available" : "Busy"}
+                {isAvailable ? t("card.available") : t("card.busy")}
               </Badge>
             </div>
-
             {registrationNumber && (
               <div className="flex items-center mt-0.5 flex-wrap gap-1">
                 <span className="text-xs text-gray-500">
-                  Reg: {registrationNumber}
+                  {t("card.reg")} {registrationNumber}
                 </span>
                 <span className="inline-flex items-center gap-0.5 bg-green-100 text-green-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                  ✓ Verified
+                  {t("card.verified")}
                 </span>
               </div>
             )}
-
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <Clock size={12} style={{ color: "#0056b3" }} />
-                <span>{experience} yrs exp</span>
+                <span>
+                  {experience} {t("card.experience")}
+                </span>
               </div>
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <MapPin size={12} style={{ color: "#0056b3" }} />
                 <span>{locationDisplay}</span>
               </div>
             </div>
-
             <a
               href={`tel:${phone}`}
               className="call-btn mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm"
               data-ocid={`nurses.button.${index}`}
             >
               <Phone size={15} />
-              Call Now
+              {t("card.callNow")}
             </a>
           </div>
         </div>

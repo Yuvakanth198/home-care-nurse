@@ -1,88 +1,82 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, MapPin, Phone, Search } from "lucide-react";
+import { ChevronRight, MapPin, Search } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { NurseCard } from "../components/NurseCard";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useListAllNurses } from "../hooks/useQueries";
 
-const ACTION_BUTTONS = [
-  {
-    id: "register",
-    emoji: "🩺",
-    title: "Register as Nurse",
-    description: "Register your professional profile.",
-    type: "link" as const,
-    to: "/register",
-    ocid: "home.register_button",
-  },
-  {
-    id: "find",
-    emoji: "🔍",
-    title: "Find a Nurse",
-    description: "Search by pincode to find help.",
-    type: "link" as const,
-    to: "/nurses",
-    ocid: "home.find_button",
-  },
-  {
-    id: "emergency",
-    emoji: "🚨",
-    title: "Emergency Services",
-    description: "Direct dial for 108 and nearby PHCs.",
-    type: "tel" as const,
-    tel: "108",
-    ocid: "home.emergency_button",
-  },
-  {
-    id: "about",
-    emoji: "🏥",
-    title: "About Home Care",
-    description: "Learn about our mission.",
-    type: "expand" as const,
-    ocid: "home.about_button",
-    expandContent: (
-      <div className="text-sm text-gray-600 leading-relaxed">
-        <p>
-          Home Care Nurse connects certified, local nurses with patients in
-          Andhra Pradesh. Our mission is to make quality home nursing care
-          affordable, accessible, and trustworthy — especially for elderly
-          patients and families in areas with limited hospital access.
-        </p>
-        <p className="mt-2">
-          We ensure every patient gets compassionate, verified, and professional
-          care at their doorstep.
-        </p>
-      </div>
-    ),
-  },
-  {
-    id: "contact",
-    emoji: "✉️",
-    title: "Contact Admin",
-    description: "Reach us at patnana.yuva@gmail.com.",
-    type: "expand" as const,
-    ocid: "home.contact_button",
-    expandContent: (
-      <div className="text-sm">
-        <p className="text-gray-500 mb-2">Send us an email:</p>
-        <a
-          href="mailto:patnana.yuva@gmail.com"
-          className="text-blue-700 font-semibold hover:underline text-base"
-        >
-          patnana.yuva@gmail.com
-        </a>
-      </div>
-    ),
-  },
-];
-
 export function HomePage() {
+  const { t } = useLanguage();
   const [pincode, setPincode] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const navigate = useNavigate();
   const { data: nurses } = useListAllNurses();
+
+  const ACTION_BUTTONS = [
+    {
+      id: "register",
+      emoji: "🩺",
+      title: t("home.register"),
+      description: t("home.register.desc"),
+      type: "link" as const,
+      to: "/register",
+      ocid: "home.register_button",
+    },
+    {
+      id: "find",
+      emoji: "🔍",
+      title: t("home.find"),
+      description: t("home.find.desc"),
+      type: "link" as const,
+      to: "/nurses",
+      ocid: "home.find_button",
+    },
+    {
+      id: "emergency",
+      emoji: "🚨",
+      title: t("home.emergency"),
+      description: t("home.emergency.desc"),
+      type: "tel" as const,
+      tel: "108",
+      ocid: "home.emergency_button",
+    },
+    {
+      id: "about",
+      emoji: "🏥",
+      title: t("home.about"),
+      description: t("home.about.desc"),
+      type: "expand" as const,
+      ocid: "home.about_button",
+      expandContent: (
+        <div className="text-sm text-gray-600 leading-relaxed">
+          <p>{t("home.about.content")}</p>
+          <p className="mt-2">{t("home.about.content2")}</p>
+        </div>
+      ),
+    },
+    {
+      id: "contact",
+      emoji: "✉️",
+      title: t("home.contact"),
+      description: t("home.contact.desc"),
+      type: "expand" as const,
+      ocid: "home.contact_button",
+      expandContent: (
+        <div className="text-sm">
+          <p className="text-gray-500 mb-2">{t("home.contact.prompt")}</p>
+          <a
+            href="mailto:patnana.yuva@gmail.com"
+            className="text-blue-700 font-semibold hover:underline text-base"
+          >
+            patnana.yuva@gmail.com
+          </a>
+        </div>
+      ),
+    },
+  ];
 
   const handleSearch = () => {
     if (pincode.length === 6) {
@@ -125,12 +119,10 @@ export function HomePage() {
               Trusted Home Healthcare Network
             </span>
             <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight">
-              Connecting Patients with{" "}
-              <span className="text-yellow-300">Local Nurses</span>
+              {t("home.welcome")}
             </h1>
             <p className="mt-4 text-white/85 text-base md:text-lg leading-relaxed">
-              Get professional nursing care at your doorstep. Search by pincode,
-              call directly, and share your experience.
+              {t("home.tagline")}
             </p>
           </motion.div>
 
@@ -148,7 +140,7 @@ export function HomePage() {
                   onChange={(e) =>
                     setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))
                   }
-                  placeholder="Enter 6-digit Pincode"
+                  placeholder={t("home.search.placeholder")}
                   className="border-0 shadow-none focus-visible:ring-0 p-0 h-auto"
                   maxLength={6}
                   inputMode="numeric"
@@ -161,7 +153,7 @@ export function HomePage() {
                 className="bg-blue-700 hover:bg-blue-800 text-white rounded-lg shrink-0"
                 data-ocid="hero.primary_button"
               >
-                Find Nurses
+                {t("home.search.btn")}
               </Button>
             </div>
           </motion.div>
@@ -224,7 +216,6 @@ export function HomePage() {
                 className="action-btn w-full text-left"
               >
                 <div className="flex items-center gap-4">
-                  {/* Emoji icon in circular badge */}
                   <div
                     className="w-14 h-14 rounded-full flex items-center justify-center text-2xl shrink-0"
                     style={{
@@ -235,7 +226,6 @@ export function HomePage() {
                   >
                     {btn.emoji}
                   </div>
-                  {/* Text */}
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-bold text-base"
@@ -247,7 +237,6 @@ export function HomePage() {
                       {btn.description}
                     </p>
                   </div>
-                  {/* Chevron */}
                   <ChevronRight
                     size={20}
                     className="text-blue-400 shrink-0 transition-transform"
@@ -259,7 +248,6 @@ export function HomePage() {
                 </div>
               </button>
 
-              {/* Expandable content */}
               {btn.type === "expand" && (
                 <AnimatePresence>
                   {expanded === btn.id && (
@@ -302,11 +290,9 @@ export function HomePage() {
             className="text-2xl md:text-3xl font-bold"
             style={{ color: "#0056b3" }}
           >
-            Featured Nurses
+            {t("home.nurses.heading")}
           </h2>
-          <p className="mt-2 text-gray-500">
-            Experienced, verified nurses ready to help
-          </p>
+          <p className="mt-2 text-gray-500">{t("home.nurses.subheading")}</p>
         </motion.div>
 
         {displayNurses.length > 0 ? (
@@ -322,10 +308,10 @@ export function HomePage() {
                 onClick={() =>
                   navigate({ to: "/nurses", search: { pincode: undefined } })
                 }
-                className="gap-2 border-blue-700 text-blue-700 hover:bg-blue-700 hover:text-white"
-                data-ocid="home.primary_button"
+                className="border-primary text-primary hover:bg-primary hover:text-white gap-2"
+                data-ocid="home.secondary_button"
               >
-                View All Nurses <ChevronRight size={16} />
+                {t("home.nurses.viewAll")}
               </Button>
             </div>
           </>
@@ -337,17 +323,14 @@ export function HomePage() {
           >
             <div className="text-5xl mb-4">🏥</div>
             <h3 className="text-lg font-semibold" style={{ color: "#0056b3" }}>
-              No nurses registered yet in your area
+              {t("home.nurses.empty")}
             </h3>
-            <p className="text-gray-500 mt-1 text-sm">
-              Be the first! Register your nursing profile to help the community.
-            </p>
             <Button
               onClick={() => navigate({ to: "/register" })}
               className="mt-5 bg-blue-700 hover:bg-blue-800 text-white"
               data-ocid="home.register_button"
             >
-              🩺 Register as Nurse
+              {t("home.nurses.register")}
             </Button>
           </div>
         )}
@@ -367,31 +350,25 @@ export function HomePage() {
               className="text-2xl md:text-3xl font-bold"
               style={{ color: "#0056b3" }}
             >
-              How It Works
+              {t("home.how.title")}
             </h2>
-            <p className="mt-2 text-gray-500">Getting care is easy and fast</p>
           </motion.div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             {[
               {
                 emoji: "📍",
-                title: "Search Pincode",
-                desc: "Enter your 6-digit pincode",
+                title: t("home.how.step1.title"),
+                desc: t("home.how.step1.desc"),
               },
               {
                 emoji: "👤",
-                title: "Browse Nurses",
-                desc: "View verified nurse profiles",
+                title: t("home.how.step2.title"),
+                desc: t("home.how.step2.desc"),
               },
               {
                 emoji: "📞",
-                title: "Call Directly",
-                desc: "One tap to call instantly",
-              },
-              {
-                emoji: "⭐",
-                title: "Share Feedback",
-                desc: "Rate your experience",
+                title: t("home.how.step3.title"),
+                desc: t("home.how.step3.desc"),
               },
             ].map((step, i) => (
               <motion.div
@@ -433,10 +410,10 @@ export function HomePage() {
       <section className="py-14" style={{ background: "#0056b3" }}>
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-white">
-            Need Nursing Care Today?
+            {t("home.cta.title")}
           </h2>
           <p className="mt-3 text-white/80 max-w-md mx-auto">
-            Search for a verified nurse in your area and get help within hours.
+            {t("home.cta.desc")}
           </p>
           <Button
             onClick={() =>
@@ -446,7 +423,7 @@ export function HomePage() {
             style={{ color: "#0056b3" }}
             data-ocid="home.secondary_button"
           >
-            <MapPin size={16} /> Find a Nurse Now
+            <MapPin size={16} /> {t("home.cta.find")}
           </Button>
         </div>
       </section>
@@ -455,7 +432,7 @@ export function HomePage() {
       <footer className="bg-gray-900 text-gray-400 py-6 text-center text-sm">
         <div className="flex flex-col items-center gap-1">
           <p>
-            Emergency: Call{" "}
+            {t("home.cta.emergency")}{" "}
             <a
               href="tel:108"
               className="text-red-400 font-bold hover:underline"

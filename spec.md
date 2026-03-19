@@ -1,28 +1,23 @@
 # Home Care Nurse
 
 ## Current State
-- NursesPage has a single pincode filter that queries the backend by 6-digit pincode
-- Nurse type has no location coordinates (latitude/longitude)
-- NurseRegisterPage has no location capture option
+Nurse profiles have an `isAvailable: Bool` field. The NurseCard already shows an Available/Busy badge based on this field. However, nurses have no way to toggle their own availability -- only admin can update nurse records.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `latitude: ?Float` and `longitude: ?Float` optional fields to the `Nurse` backend type
-- Optional "Detect My Location" section on NurseRegisterPage so nurses can share their GPS coordinates when registering
-- Second filter mode on NursesPage: "Nearby (10-15 km)" -- uses browser geolocation to get the patient's current position, then filters all nurses whose stored coordinates are within 10-15 km using the Haversine formula (pure frontend calculation)
-- Distance badge on NurseCard when displaying nearby results (e.g. "3.2 km away")
+- Backend: `setNurseAvailability(registrationNumber, phone, isAvailable)` -- public function (no admin login), verifies nurse by credentials and updates only the `isAvailable` field.
+- Frontend: `useSetNurseAvailability` hook in `useQueries.ts`.
+- Frontend: Availability toggle card in `NurseDashboardPage.tsx` -- shown after nurse logs in, displays current ON/OFF status with a large toggle switch and saves to backend.
 
 ### Modify
-- NursesPage: Replace single filter bar with two tab/toggle options: "Filter by Pincode" and "Filter by Nearby Location"
-- NurseRegisterPage: Add optional location section with a "Detect My Location" button that auto-fills lat/lng via `navigator.geolocation`; nurses can also skip this
-- `useRegisterNurse` mutation must pass `latitude` and `longitude` optional fields
+- `NurseDashboardPage.tsx`: After login, show an "Availability" section above the upload form with current status and a toggle switch nurses can flip.
 
 ### Remove
-- Nothing
+- Nothing removed.
 
 ## Implementation Plan
-1. Regenerate Motoko backend to add optional `latitude` and `longitude` Float fields to the `Nurse` type
-2. Update NursesPage to show two filter tabs: Pincode and Nearby; implement Haversine distance filter on frontend using all nurses data
-3. Update NurseRegisterPage to add optional GPS location capture section
-4. Pass distance to NurseCard for display when filtering by location
+1. Add `setNurseAvailability` to `src/backend/main.mo`.
+2. Add `useSetNurseAvailability` to `src/frontend/src/hooks/useQueries.ts`.
+3. Add availability toggle UI to `NurseDashboardPage.tsx`.
+4. Add translation keys for availability toggle in `translations.ts`.

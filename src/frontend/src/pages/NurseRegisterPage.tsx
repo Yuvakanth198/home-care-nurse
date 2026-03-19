@@ -102,6 +102,10 @@ export function NurseRegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+    if (form.latitude === undefined || form.longitude === undefined) {
+      setSubmitError("Please detect your location before submitting.");
+      return;
+    }
     try {
       await registerNurse.mutateAsync({
         id: uuidv4(),
@@ -309,20 +313,18 @@ export function NurseRegisterPage() {
               </div>
             </div>
 
-            {/* Share Your Location (optional) */}
+            {/* Share Your Location (required) */}
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <div className="flex items-center gap-2 mb-2">
                 <MapPin size={16} style={{ color: "#0056b3" }} />
                 <p className="text-sm font-semibold text-foreground">
                   Share Your Location{" "}
-                  <span className="text-muted-foreground text-xs font-normal">
-                    (optional)
-                  </span>
+                  <span className="text-destructive">*</span>
                 </p>
               </div>
               <p className="text-xs text-muted-foreground mb-3">
                 Sharing your GPS coordinates helps patients find nurses nearby.
-                This is optional and can be skipped.
+                This is required to appear in location-based search results.
               </p>
 
               {locationState.status === "idle" && (

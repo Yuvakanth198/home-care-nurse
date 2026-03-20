@@ -5,13 +5,14 @@ import {
   Eye,
   EyeOff,
   ImageIcon,
+  Loader2,
   Pencil,
   RefreshCw,
   Shield,
   Trash2,
   Video,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Nurse, ServiceProof } from "../backend";
 import { useActor } from "../hooks/useActor";
@@ -22,6 +23,7 @@ import {
   useUpdateNurse,
   useUpdateServiceProof,
 } from "../hooks/useQueries";
+import { extractICPError } from "../utils/icpError";
 
 const ADMIN_PASSWORD = "Yuva@9849";
 
@@ -74,8 +76,9 @@ function EditNurseForm({ nurse, onClose, onSaved }: EditNurseFormProps) {
         onSaved();
         onClose();
       },
-      onError: () => {
-        toast.error("Failed to update nurse details.");
+      onError: (err: unknown) => {
+        const { message, code } = extractICPError(err);
+        toast.error(`[${code}] ${message}`);
       },
     });
   }
@@ -518,6 +521,11 @@ export function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Track whether at least one successful fetch has completed
+  const hasFetchedRef = useRef(false);
+  // Retry interval ref — polls until actor is ready after login
+  const retryIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const { actor } = useActor();
   const deleteMutation = useDeleteNurse();
 
@@ -529,8 +537,10 @@ export function AdminDashboardPage() {
       const result = await actor.listAllNurses();
       setNurses(result);
       setLastRefreshed(new Date());
-    } catch (_err) {
-      setFetchError("Failed to load nurses. Please click Refresh.");
+      hasFetchedRef.current = true;
+    } catch (err) {
+      const { message, code } = extractICPError(err);
+      setFetchError(`[${code}] ${message} — Click Refresh to retry.`);
     } finally {
       setIsLoading(false);
     }
@@ -552,12 +562,39 @@ export function AdminDashboardPage() {
     return () => clearInterval(interval);
   }, [actor, authed, fetchNurses]);
 
+  // Clean up retry interval on unmount
+  useEffect(() => {
+    return () => {
+      if (retryIntervalRef.current) {
+        clearInterval(retryIntervalRef.current);
+      }
+    };
+  }, []);
+
   function login(e: React.FormEvent) {
     e.preventDefault();
     if (pw === ADMIN_PASSWORD) {
       sessionStorage.setItem("adminAuth", "true");
       setAuthed(true);
       setPwError("");
+      // If actor already available, fetch immediately
+      if (actor) {
+        fetchNurses();
+      } else {
+        // Otherwise, poll every 500ms until actor is ready
+        if (retryIntervalRef.current) {
+          clearInterval(retryIntervalRef.current);
+        }
+        retryIntervalRef.current = setInterval(() => {
+          if (actor) {
+            fetchNurses();
+            if (retryIntervalRef.current) {
+              clearInterval(retryIntervalRef.current);
+              retryIntervalRef.current = null;
+            }
+          }
+        }, 500);
+      }
     } else {
       setPwError("Incorrect password. Please try again.");
     }
@@ -566,6 +603,12 @@ export function AdminDashboardPage() {
   function logout() {
     sessionStorage.removeItem("adminAuth");
     setAuthed(false);
+    setNurses([]);
+    hasFetchedRef.current = false;
+    if (retryIntervalRef.current) {
+      clearInterval(retryIntervalRef.current);
+      retryIntervalRef.current = null;
+    }
   }
 
   function handleDelete(id: string) {
@@ -575,8 +618,9 @@ export function AdminDashboardPage() {
         setConfirmId(null);
         fetchNurses();
       },
-      onError: () => {
-        toast.error("Failed to delete. Please try again.");
+      onError: (err: unknown) => {
+        const { message, code } = extractICPError(err);
+        toast.error(`[${code}] ${message}`);
         setConfirmId(null);
       },
     });
@@ -684,6 +728,17 @@ export function AdminDashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
+        {/* Connecting to database banner — shown when authed but actor not yet ready */}
+        {!actor && (
+          <div
+            className="mb-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-4 py-3 text-sm flex items-center gap-2"
+            data-ocid="admin.loading_state"
+          >
+            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            Connecting to database... Please wait.
+          </div>
+        )}
+
         <h2 className="text-lg font-semibold text-gray-700 mb-4">
           Registered Nurses
           {!isLoading && nurses.length > 0 && (
@@ -705,21 +760,46 @@ export function AdminDashboardPage() {
 
         {isLoading && nurses.length === 0 && (
           <div
-            className="text-center py-12 text-gray-400"
+            className="text-center py-12 text-gray-400 flex flex-col items-center gap-2"
             data-ocid="admin.loading_state"
           >
+            <Loader2 className="w-6 h-6 animate-spin" />
             Loading nurses...
           </div>
         )}
 
-        {!isLoading && nurses.length === 0 && !fetchError && (
-          <div
-            className="text-center py-12 bg-white rounded-xl border"
-            data-ocid="admin.empty_state"
-          >
-            <p className="text-gray-500">No nurses registered yet.</p>
-          </div>
-        )}
+        {/* Empty state — only shown after a confirmed successful fetch returns 0 results */}
+        {!isLoading &&
+          hasFetchedRef.current &&
+          nurses.length === 0 &&
+          !fetchError && (
+            <div
+              className="text-center py-12 bg-white rounded-xl border"
+              data-ocid="admin.empty_state"
+            >
+              <p className="text-gray-500 mb-2">
+                No nurses found in the database.
+              </p>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto mb-4 px-4">
+                If nurses registered before a recent app update, their data may
+                have been cleared during that deployment. Please ask them to
+                re-register at{" "}
+                <a href="/register" className="text-blue-600 underline">
+                  /register
+                </a>
+                .
+              </p>
+              <button
+                type="button"
+                onClick={fetchNurses}
+                disabled={isLoading}
+                className="text-sm text-blue-600 border border-blue-300 rounded-lg px-4 py-2 hover:bg-blue-50 disabled:opacity-60"
+                data-ocid="admin.secondary_button"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
 
         {nurses.length > 0 && (
           <div className="space-y-3" data-ocid="admin.list">
@@ -766,9 +846,21 @@ export function AdminDashboardPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-800 truncate">
-                        {nurse.name}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-800 truncate">
+                          {nurse.name}
+                        </p>
+                        {/* Availability badge */}
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            nurse.isAvailable
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          {nurse.isAvailable ? "Available" : "Unavailable"}
+                        </span>
+                      </div>
                       <p className="text-xs text-gray-500">
                         Reg: {nurse.registrationNumber} &middot; Pincode:{" "}
                         {String(nurse.pincode)}

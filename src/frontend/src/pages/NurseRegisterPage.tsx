@@ -3,18 +3,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  CheckCircle2,
-  CrossIcon,
-  Loader2,
-  MapPin,
-  Navigation,
-  Upload,
-} from "lucide-react";
+import { CheckCircle2, Loader2, MapPin, Navigation } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useActor } from "../hooks/useActor";
 import { useRegisterNurse } from "../hooks/useQueries";
+import { extractICPError } from "../utils/icpError";
 import { v4 as uuidv4 } from "../utils/uuid";
 
 interface FormState {
@@ -106,452 +100,393 @@ export function NurseRegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
+
+    // Pre-flight validation
+    if (!form.name.trim()) {
+      setSubmitError("[E010] Name is required");
+      return;
+    }
+    if (!form.phone.trim()) {
+      setSubmitError("[E011] Phone number is required");
+      return;
+    }
+    if (!form.registrationNumber.trim()) {
+      setSubmitError("[E012] Nursing Council Registration Number is required");
+      return;
+    }
+    if (!form.pincode.trim() || !/^\d{6}$/.test(form.pincode.trim())) {
+      setSubmitError("[E013] Pincode must be exactly 6 digits (e.g. 530001)");
+      return;
+    }
     if (form.latitude === undefined || form.longitude === undefined) {
-      setSubmitError(t("register.location.required"));
+      setSubmitError(
+        t("register.location.required") ||
+          "[E014] Location is required. Please use 'Detect My Location' button.",
+      );
+      return;
+    }
+    if (!actor) {
+      setSubmitError(
+        "[E001] Backend not ready. Please wait a moment and try again.",
+      );
+      return;
+    }
+
+    let pincodeBig: bigint;
+    let experienceBig: bigint;
+    try {
+      pincodeBig = BigInt(form.pincode.trim());
+    } catch {
+      setSubmitError(
+        "[E013] Invalid Pincode. Must be exactly 6 digits (e.g. 530001).",
+      );
       return;
     }
     try {
-      await registerNurse.mutateAsync({
+      experienceBig = BigInt(form.experience.trim() || "0");
+    } catch {
+      setSubmitError(
+        "[E014] Invalid value in Experience field. Please enter a number.",
+      );
+      return;
+    }
+
+    try {
+      // Build nurse object with ALL fields explicitly declared
+      // (prevents Candid serialization failures from missing optional fields)
+      const nursePayload = {
         id: uuidv4(),
-        name: form.name,
-        registrationNumber: form.registrationNumber,
-        phone: form.phone,
-        village: form.village,
-        mandal: form.mandal,
-        district: form.district,
-        pincode: BigInt(form.pincode),
-        experience: BigInt(form.experience || "0"),
-        bio: form.bio,
+        name: form.name.trim(),
+        registrationNumber: form.registrationNumber.trim(),
+        phone: form.phone.trim(),
+        village: form.village.trim(),
+        mandal: form.mandal.trim(),
+        district: form.district.trim(),
+        pincode: pincodeBig,
+        experience: experienceBig,
+        bio: form.bio.trim(),
         isAvailable: form.isAvailable,
-        ...(form.latitude !== undefined && form.longitude !== undefined
-          ? { latitude: form.latitude, longitude: form.longitude }
-          : {}),
+        profilePhoto: undefined as undefined,
+        latitude: form.latitude,
+        longitude: form.longitude,
+      };
+
+      console.log("[Registration] Submitting payload:", {
+        ...nursePayload,
+        id: `${nursePayload.id.substring(0, 8)}...`,
       });
+
+      await registerNurse.mutateAsync(nursePayload);
       setSuccessName(form.name);
       setSuccess(true);
       setForm(EMPTY);
       setLocationState({ status: "idle" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t("register.failed");
-      setSubmitError(msg);
+      console.error("[Registration] Raw error object:", err);
+      const { message, code } = extractICPError(err);
+      setSubmitError(`[${code}] ${message}`);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-primary mb-2">
+            {t("register.success.title") || "Registration Successful!"}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {t("register.success.message") ||
+              `Welcome, ${successName}! Your profile is now live and patients can find you.`}
+          </p>
+          <Button
+            className="w-full bg-primary hover:bg-primary/90"
+            onClick={() => setSuccess(false)}
+          >
+            {t("register.success.another") || "Register Another Nurse"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       {/* Hero banner */}
-      <div className="bg-primary py-10 px-4">
-        <div className="container mx-auto max-w-2xl text-center">
-          <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
-            <CrossIcon size={28} className="text-white" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">
-            {t("register.title")}
-          </h1>
-          <p className="mt-2 text-sm text-white/80">{t("register.subtitle")}</p>
-        </div>
+      <div className="bg-primary py-10 px-4 text-white text-center">
+        <h1 className="text-3xl font-bold mb-2">
+          {t("register.title") || "Nurse Registration"}
+        </h1>
+        <p className="text-blue-100">
+          {t("register.subtitle") ||
+            "Join our network of certified home care nurses"}
+        </p>
       </div>
 
-      <div className="container mx-auto max-w-2xl px-4 py-8">
-        {success && (
-          <div
-            className="mb-6 flex items-start gap-3 bg-accent/20 border border-accent text-accent-foreground rounded-xl px-5 py-4"
-            data-ocid="register.success_state"
-          >
-            <CheckCircle2 size={20} className="text-accent shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-foreground">
-                {t("register.success.title")}
-              </p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {successName
-                  ? `${successName} has been registered. You will appear in the admin dashboard shortly.`
-                  : t("register.success.desc")}
-              </p>
-            </div>
-          </div>
-        )}
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Personal Info */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+              <span>👤</span>
+              {t("register.section.personal") || "Personal Information"}
+            </h3>
 
-        <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-          <h2 className="text-lg font-bold text-foreground mb-5">
-            {t("register.formTitle")}
-          </h2>
-
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-5"
-            data-ocid="register.modal"
-          >
-            {/* Full Name */}
             <div>
-              <Label htmlFor="reg-name" className="text-sm font-medium">
-                {t("register.name")} <span className="text-destructive">*</span>
+              <Label htmlFor="name">
+                {t("register.name") || "Full Name"}
+                <span className="text-red-500"> *</span>
               </Label>
               <Input
-                id="reg-name"
+                id="name"
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder={t("register.name.placeholder")}
+                placeholder={
+                  t("register.name.placeholder") || "Enter your full name"
+                }
+                className="mt-1"
                 required
-                className="mt-1.5 h-12"
-                data-ocid="register.input"
               />
             </div>
 
-            {/* Nursing Council Reg No */}
             <div>
-              <Label htmlFor="reg-number" className="text-sm font-medium">
-                {t("register.regNo")}{" "}
-                <span className="text-destructive">*</span>
+              <Label htmlFor="registrationNumber">
+                {t("register.regNumber") ||
+                  "Nursing Council Registration Number"}
+                <span className="text-red-500"> *</span>
               </Label>
               <Input
-                id="reg-number"
+                id="registrationNumber"
                 value={form.registrationNumber}
                 onChange={(e) => set("registrationNumber", e.target.value)}
-                placeholder={t("register.regNo.placeholder")}
+                placeholder="e.g. AP/RN/12345"
+                className="mt-1"
                 required
-                className="mt-1.5 h-12"
-                data-ocid="register.input"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("register.regNo.hint")}
-              </p>
             </div>
 
-            {/* Phone Number */}
             <div>
-              <Label htmlFor="reg-phone" className="text-sm font-medium">
-                {t("register.phone")}{" "}
-                <span className="text-destructive">*</span>
+              <Label htmlFor="phone">
+                {t("register.phone") || "Mobile Number"}
+                <span className="text-red-500"> *</span>
               </Label>
               <Input
-                id="reg-phone"
+                id="phone"
+                type="tel"
                 value={form.phone}
                 onChange={(e) => set("phone", e.target.value)}
-                placeholder={t("register.phone.placeholder")}
-                inputMode="tel"
+                placeholder="10-digit mobile number"
+                className="mt-1"
                 required
-                className="mt-1.5 h-12"
-                data-ocid="register.input"
               />
             </div>
 
-            {/* Address Section */}
             <div>
-              <p className="text-sm font-semibold text-foreground mb-3">
-                {t("register.address")}{" "}
-                <span className="text-destructive">*</span>
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="reg-village" className="text-sm font-medium">
-                    {t("register.village")}{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="reg-village"
-                    value={form.village}
-                    onChange={(e) => set("village", e.target.value)}
-                    placeholder={t("register.village.placeholder")}
-                    required
-                    className="mt-1.5 h-12"
-                    data-ocid="register.input"
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label htmlFor="reg-mandal" className="text-sm font-medium">
-                      {t("register.mandal")}{" "}
-                      <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="reg-mandal"
-                      value={form.mandal}
-                      onChange={(e) => set("mandal", e.target.value)}
-                      placeholder={t("register.mandal.placeholder")}
-                      required
-                      className="mt-1.5 h-12"
-                      data-ocid="register.input"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="reg-district"
-                      className="text-sm font-medium"
-                    >
-                      {t("register.district")}{" "}
-                      <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="reg-district"
-                      value={form.district}
-                      onChange={(e) => set("district", e.target.value)}
-                      placeholder={t("register.district.placeholder")}
-                      required
-                      className="mt-1.5 h-12"
-                      data-ocid="register.input"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="reg-pincode" className="text-sm font-medium">
-                    {t("register.pincode")}{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="reg-pincode"
-                    value={form.pincode}
-                    onChange={(e) =>
-                      set(
-                        "pincode",
-                        e.target.value.replace(/\D/g, "").slice(0, 6),
-                      )
-                    }
-                    placeholder={t("register.pincode.placeholder")}
-                    inputMode="numeric"
-                    maxLength={6}
-                    required
-                    className="mt-1.5 h-12"
-                    data-ocid="register.input"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Share Your Location */}
-            <div className="border border-border rounded-xl p-4 bg-muted/30">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin size={16} style={{ color: "#0056b3" }} />
-                <p className="text-sm font-semibold text-foreground">
-                  {t("register.location")}{" "}
-                  <span className="text-destructive">*</span>
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                {t("register.location.hint")}
-              </p>
-
-              {locationState.status === "idle" && (
-                <Button
-                  type="button"
-                  onClick={handleDetectLocation}
-                  variant="outline"
-                  className="w-full h-11 gap-2 border-primary/40 text-primary hover:bg-primary/5"
-                  data-ocid="register.button"
-                >
-                  <Navigation size={16} />
-                  {t("register.location.btn")}
-                </Button>
-              )}
-
-              {locationState.status === "loading" && (
-                <div
-                  className="flex items-center justify-center gap-2 py-3 text-primary"
-                  data-ocid="register.loading_state"
-                >
-                  <Loader2 size={16} className="animate-spin" />
-                  <span className="text-sm">
-                    {t("register.location.detecting")}
-                  </span>
-                </div>
-              )}
-
-              {locationState.status === "success" &&
-                form.latitude !== undefined && (
-                  <div
-                    className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-lg px-4 py-3"
-                    data-ocid="register.success_state"
-                  >
-                    <CheckCircle2
-                      size={18}
-                      className="text-green-600 shrink-0"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-green-700">
-                        {t("register.location.captured")}
-                      </p>
-                      <p className="text-xs text-green-600 mt-0.5">
-                        {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-muted-foreground h-7 px-2"
-                      onClick={() => {
-                        setForm((prev) => ({
-                          ...prev,
-                          latitude: undefined,
-                          longitude: undefined,
-                        }));
-                        setLocationState({ status: "idle" });
-                      }}
-                      data-ocid="register.secondary_button"
-                    >
-                      {t("register.location.remove")}
-                    </Button>
-                  </div>
-                )}
-
-              {locationState.status === "error" && (
-                <>
-                  <div
-                    className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3 mb-2"
-                    data-ocid="register.error_state"
-                  >
-                    {
-                      (locationState as { status: "error"; message: string })
-                        .message
-                    }
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={handleDetectLocation}
-                    variant="outline"
-                    className="w-full h-11 gap-2"
-                    data-ocid="register.button"
-                  >
-                    <Navigation size={16} />
-                    {t("register.location.tryAgain")}
-                  </Button>
-                </>
-              )}
-            </div>
-
-            {/* Years of Experience */}
-            <div>
-              <Label htmlFor="reg-exp" className="text-sm font-medium">
-                {t("register.experience")}{" "}
-                <span className="text-destructive">*</span>
+              <Label htmlFor="experience">
+                {t("register.experience") || "Years of Experience"}
               </Label>
               <Input
-                id="reg-exp"
+                id="experience"
                 type="number"
-                min={0}
-                max={60}
+                min="0"
+                max="50"
                 value={form.experience}
                 onChange={(e) => set("experience", e.target.value)}
-                placeholder={t("register.experience.placeholder")}
-                required
-                className="mt-1.5 h-12"
-                data-ocid="register.input"
+                placeholder="e.g. 5"
+                className="mt-1"
               />
             </div>
 
-            {/* Bio */}
             <div>
-              <Label htmlFor="reg-bio" className="text-sm font-medium">
-                {t("register.bio")}{" "}
-                <span className="text-muted-foreground text-xs">
-                  {t("register.optional")}
-                </span>
+              <Label htmlFor="bio">
+                {t("register.bio") || "Short Bio / Skills"}
               </Label>
               <Textarea
-                id="reg-bio"
+                id="bio"
                 value={form.bio}
                 onChange={(e) => set("bio", e.target.value)}
-                placeholder={t("register.bio.placeholder")}
+                placeholder={
+                  t("register.bio.placeholder") ||
+                  "Describe your skills and experience..."
+                }
+                className="mt-1"
                 rows={3}
-                className="mt-1.5"
-                data-ocid="register.textarea"
               />
             </div>
+          </div>
 
-            {/* Photo upload */}
-            <div>
-              <Label className="text-sm font-medium">
-                {t("register.photo")}{" "}
-                <span className="text-muted-foreground text-xs">
-                  {t("register.optional")}
-                </span>
-              </Label>
-              <label
-                htmlFor="reg-photo"
-                className="mt-1.5 flex items-center gap-3 w-full border-2 border-dashed border-border rounded-xl px-4 py-4 cursor-pointer hover:border-primary transition-colors"
-                data-ocid="register.upload_button"
-              >
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <Upload size={16} className="text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {form.photoFile
-                      ? form.photoFile.name
-                      : t("register.photo.upload")}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("register.photo.hint")}
-                  </p>
-                </div>
-                <input
-                  id="reg-photo"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) =>
-                    set("photoFile", e.target.files?.[0] || null)
-                  }
-                />
-              </label>
-            </div>
+          {/* Address */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+              <span>🏘️</span>
+              {t("register.section.address") || "Address"}
+            </h3>
 
-            {/* Availability */}
-            <div className="flex items-center gap-3 bg-muted rounded-xl px-4 py-3">
-              <Switch
-                id="reg-available"
-                checked={form.isAvailable}
-                onCheckedChange={(v) => set("isAvailable", v)}
-                data-ocid="register.switch"
-              />
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label
-                  htmlFor="reg-available"
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  {t("register.available")}
+                <Label htmlFor="village">
+                  {t("register.village") || "Village"}
                 </Label>
-                <p className="text-xs text-muted-foreground">
-                  {t("register.available.hint")}
-                </p>
+                <Input
+                  id="village"
+                  value={form.village}
+                  onChange={(e) => set("village", e.target.value)}
+                  placeholder="Village name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="mandal">
+                  {t("register.mandal") || "Mandal"}
+                </Label>
+                <Input
+                  id="mandal"
+                  value={form.mandal}
+                  onChange={(e) => set("mandal", e.target.value)}
+                  placeholder="Mandal name"
+                  className="mt-1"
+                />
               </div>
             </div>
 
-            {(submitError || registerNurse.isError) && (
-              <div
-                className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3"
-                data-ocid="register.error_state"
-              >
-                {submitError || t("register.failed")}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="district">
+                  {t("register.district") || "District"}
+                </Label>
+                <Input
+                  id="district"
+                  value={form.district}
+                  onChange={(e) => set("district", e.target.value)}
+                  placeholder="District name"
+                  className="mt-1"
+                />
               </div>
-            )}
+              <div>
+                <Label htmlFor="pincode">
+                  {t("register.pincode") || "Pincode"}
+                  <span className="text-red-500"> *</span>
+                </Label>
+                <Input
+                  id="pincode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={form.pincode}
+                  onChange={(e) =>
+                    set("pincode", e.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder="6-digit pincode"
+                  className="mt-1"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              {t("register.section.location") || "Your Location"}
+              <span className="text-red-500"> *</span>
+            </h3>
+            <p className="text-sm text-gray-500">
+              {t("register.location.info") ||
+                "Your location helps patients find you for home visits."}
+            </p>
 
             <Button
-              type="submit"
-              disabled={registerNurse.isPending || actorLoading || !actor}
-              className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-              data-ocid="register.submit_button"
+              type="button"
+              variant="outline"
+              className="w-full border-primary text-primary hover:bg-primary/5"
+              onClick={handleDetectLocation}
+              disabled={locationState.status === "loading"}
             >
-              {registerNurse.isPending ? (
+              {locationState.status === "loading" ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("register.submitting")}
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Detecting...
                 </>
               ) : (
-                t("register.submit")
+                <>
+                  <Navigation className="w-4 h-4 mr-2" />{" "}
+                  {t("register.detectLocation") || "Detect My Location"}{" "}
+                  <span className="text-red-500 ml-1">*</span>
+                </>
               )}
             </Button>
-            {(!actor || actorLoading) && (
-              <p className="text-xs text-center text-gray-400 mt-1">
-                Connecting to network, please wait...
-              </p>
-            )}
-          </form>
-        </div>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          {t("register.legal")}
-        </p>
+            {locationState.status === "success" && (
+              <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 rounded-lg p-3">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  {t("register.location.detected") ||
+                    "Location detected successfully!"}{" "}
+                  ({form.latitude?.toFixed(4)}, {form.longitude?.toFixed(4)})
+                </span>
+              </div>
+            )}
+            {locationState.status === "error" && (
+              <div className="text-red-500 text-sm bg-red-50 rounded-lg p-3">
+                {locationState.message}
+              </div>
+            )}
+          </div>
+
+          {/* Availability */}
+          <div className="bg-white rounded-2xl shadow-sm border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base font-medium">
+                  {t("register.availability") || "Available for Appointments"}
+                </Label>
+                <p className="text-sm text-gray-500 mt-1">
+                  {t("register.availability.info") ||
+                    "Patients can book appointments with you"}
+                </p>
+              </div>
+              <Switch
+                checked={form.isAvailable}
+                onCheckedChange={(v) => set("isAvailable", v)}
+              />
+            </div>
+          </div>
+
+          {/* Error */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-red-700 text-sm font-medium">{submitError}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {t("register.error.help") ||
+                  "If this error persists, open browser console (F12) and note the [ICP Error Raw] line."}
+              </p>
+            </div>
+          )}
+
+          {/* Submit */}
+          <Button
+            type="submit"
+            className="w-full bg-primary hover:bg-primary/90 text-white py-6 text-lg font-semibold rounded-2xl"
+            disabled={
+              actorLoading ||
+              !actor ||
+              registerNurse.isPending ||
+              locationState.status === "loading"
+            }
+          >
+            {registerNurse.isPending || actorLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                {actorLoading
+                  ? t("register.connecting") || "Connecting to backend..."
+                  : t("register.submitting") || "Registering..."}
+              </>
+            ) : (
+              t("register.submit") || "Register as Nurse"
+            )}
+          </Button>
+        </form>
       </div>
     </div>
   );

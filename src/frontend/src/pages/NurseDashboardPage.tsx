@@ -29,6 +29,7 @@ import {
   useSetNurseAvailability,
   useUpdateNurseLocation,
 } from "../hooks/useQueries";
+import { extractICPError } from "../utils/icpError";
 import { v4 as generateUUID } from "../utils/uuid";
 
 function ServiceProofCard({
@@ -233,9 +234,10 @@ export function NurseDashboardPage() {
               toast.success("Location updated successfully!");
               setTimeout(() => setLocationStatus("idle"), 4000);
             },
-            onError: () => {
+            onError: (err: unknown) => {
               setLocationStatus("error");
-              toast.error("Failed to save location. Please try again.");
+              const { message: locMsg, code: locCode } = extractICPError(err);
+              toast.error(`[${locCode}] ${locMsg}`);
             },
           },
         );
@@ -478,8 +480,9 @@ export function NurseDashboardPage() {
                           );
                           toast.success(t("dashboard.availability.saved"));
                         },
-                        onError: () => {
-                          toast.error(t("dashboard.availability.error"));
+                        onError: (err: unknown) => {
+                          const { message, code } = extractICPError(err);
+                          toast.error(`[${code}] ${message}`);
                         },
                       },
                     );

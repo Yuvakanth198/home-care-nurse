@@ -171,8 +171,10 @@ export interface backendInterface {
     listAllServiceProofs(): Promise<Array<ServiceProof>>;
     registerNurse(nurse: Nurse): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setNurseAvailability(registrationNumber: string, phone: string, isAvailable: boolean): Promise<void>;
     submitFeedback(feedback: Feedback): Promise<void>;
     updateNurse(nurse: Nurse): Promise<void>;
+    updateNurseLocation(registrationNumber: string, phone: string, latitude: number, longitude: number): Promise<void>;
     updateServiceProof(proof: ServiceProof): Promise<void>;
 }
 import type { ExternalBlob as _ExternalBlob, Feedback as _Feedback, Nurse as _Nurse, ServiceProof as _ServiceProof, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
@@ -542,6 +544,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setNurseAvailability(arg0: string, arg1: string, arg2: boolean): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setNurseAvailability(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setNurseAvailability(arg0, arg1, arg2);
+            return result;
+        }
+    }
     async submitFeedback(arg0: Feedback): Promise<void> {
         if (this.processError) {
             try {
@@ -567,6 +583,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateNurse(await to_candid_Nurse_n8(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async updateNurseLocation(arg0: string, arg1: string, arg2: number, arg3: number): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateNurseLocation(arg0, arg1, arg2, arg3);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateNurseLocation(arg0, arg1, arg2, arg3);
             return result;
         }
     }

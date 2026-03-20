@@ -9,7 +9,7 @@ function Logo() {
   return (
     <Link to="/" className="flex items-center gap-2" data-ocid="nav.link">
       <img
-        src="/assets/generated/rural-nurse-care-logo-transparent.dim_400x400.png"
+        src="/assets/generated/home-care-nurse-logo-transparent.dim_400x400.png"
         alt="Home Care Nurse Logo"
         className="h-10 w-10 object-contain"
       />
@@ -178,7 +178,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
             <div>
               <div className="flex items-center gap-3 mb-3">
                 <img
-                  src="/assets/generated/rural-nurse-care-logo-transparent.dim_400x400.png"
+                  src="/assets/generated/home-care-nurse-logo-transparent.dim_400x400.png"
                   alt="Home Care Nurse Logo"
                   className="h-12 w-12 object-contain"
                 />

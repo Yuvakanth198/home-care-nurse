@@ -102,7 +102,7 @@ function SplashScreen() {
         className="flex flex-col items-center gap-4 px-8 text-center"
       >
         <motion.img
-          src="/assets/generated/rural-nurse-care-logo-transparent.dim_400x400.png"
+          src="/assets/generated/home-care-nurse-logo-transparent.dim_400x400.png"
           alt="Home Care Nurse Logo"
           className="w-32 h-32 object-contain drop-shadow-lg"
           initial={{ opacity: 0, y: -10 }}

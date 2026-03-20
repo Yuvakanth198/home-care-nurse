@@ -2,17 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Feedback, Nurse, ServiceProof } from "../backend";
 import { useActor } from "./useActor";
 
-export function useListAllNurses() {
+export function useListAllNurses(refreshKey = 0) {
   const { actor } = useActor();
   return useQuery<Nurse[]>({
-    queryKey: ["nurses"],
+    queryKey: ["nurses", refreshKey],
     queryFn: async () => {
       if (!actor) return [];
       return actor.listAllNurses();
     },
     enabled: !!actor,
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -97,7 +99,7 @@ export function useAddNurse() {
   return useMutation({
     mutationFn: async (nurse: Nurse) => {
       if (!actor) throw new Error("Not connected");
-      return actor.addNurse(nurse);
+      return actor.registerNurse(nurse);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["nurses"] });
@@ -193,19 +195,13 @@ export function useGetNurseServiceProofs(nurseId: string) {
   });
 }
 
-/**
- * Simulates updating a service proof by deleting the old one and adding a
- * new one with the same data (minus removed media). The backend does not
- * expose an updateServiceProof method, so this is a delete + re-add.
- */
 export function useUpdateServiceProof() {
   const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (proof: ServiceProof) => {
       if (!actor) throw new Error("Not connected");
-      await actor.deleteServiceProof(proof.id);
-      await actor.addServiceProof(proof);
+      await actor.updateServiceProof(proof);
     },
     onSuccess: (_data, variables) => {
       qc.invalidateQueries({ queryKey: ["serviceProofs", variables.nurseId] });
@@ -255,10 +251,35 @@ export function useSetNurseAvailability() {
       isAvailable: boolean;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return (actor as any).setNurseAvailability(
+      return actor.setNurseAvailability(registrationNumber, phone, isAvailable);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["nurses"] });
+    },
+  });
+}
+
+export function useUpdateNurseLocation() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      registrationNumber,
+      phone,
+      latitude,
+      longitude,
+    }: {
+      registrationNumber: string;
+      phone: string;
+      latitude: number;
+      longitude: number;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateNurseLocation(
         registrationNumber,
         phone,
-        isAvailable,
+        latitude,
+        longitude,
       );
     },
     onSuccess: () => {

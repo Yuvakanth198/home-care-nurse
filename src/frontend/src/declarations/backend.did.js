@@ -128,8 +128,14 @@ export const idlService = IDL.Service({
   'listAllServiceProofs' : IDL.Func([], [IDL.Vec(ServiceProof)], ['query']),
   'registerNurse' : IDL.Func([Nurse], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setNurseAvailability' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
   'submitFeedback' : IDL.Func([Feedback], [], []),
   'updateNurse' : IDL.Func([Nurse], [], []),
+  'updateNurseLocation' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+      [],
+      [],
+    ),
   'updateServiceProof' : IDL.Func([ServiceProof], [], []),
 });
 
@@ -256,8 +262,14 @@ export const idlFactory = ({ IDL }) => {
     'listAllServiceProofs' : IDL.Func([], [IDL.Vec(ServiceProof)], ['query']),
     'registerNurse' : IDL.Func([Nurse], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setNurseAvailability' : IDL.Func([IDL.Text, IDL.Text, IDL.Bool], [], []),
     'submitFeedback' : IDL.Func([Feedback], [], []),
     'updateNurse' : IDL.Func([Nurse], [], []),
+    'updateNurseLocation' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Float64, IDL.Float64],
+        [],
+        [],
+      ),
     'updateServiceProof' : IDL.Func([ServiceProof], [], []),
   });
 };

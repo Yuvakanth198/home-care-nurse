@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronUp,
@@ -12,27 +11,28 @@ import {
   Trash2,
   Video,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { Nurse, ServiceProof } from "../backend";
+import { useActor } from "../hooks/useActor";
 import {
   useDeleteNurse,
   useDeleteServiceProof,
   useGetNurseServiceProofs,
-  useListAllNurses,
   useUpdateNurse,
   useUpdateServiceProof,
 } from "../hooks/useQueries";
 
-const ADMIN_PASSWORD = "RuralCare@Admin2024";
+const ADMIN_PASSWORD = "Yuva@9849";
 
 // ── Edit Nurse Form ────────────────────────────────────────────────────────────
 interface EditNurseFormProps {
   nurse: Nurse;
   onClose: () => void;
+  onSaved: () => void;
 }
 
-function EditNurseForm({ nurse, onClose }: EditNurseFormProps) {
+function EditNurseForm({ nurse, onClose, onSaved }: EditNurseFormProps) {
   const updateMutation = useUpdateNurse();
   const [form, setForm] = useState({
     name: nurse.name,
@@ -71,6 +71,7 @@ function EditNurseForm({ nurse, onClose }: EditNurseFormProps) {
     updateMutation.mutate(updated, {
       onSuccess: () => {
         toast.success("Nurse details updated.");
+        onSaved();
         onClose();
       },
       onError: () => {
@@ -511,17 +512,45 @@ export function AdminDashboardPage() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [expandedProofs, setExpandedProofs] = useState<Set<string>>(new Set());
   const [editingNurseId, setEditingNurseId] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-  const { data: nurses, isLoading, refetch } = useListAllNurses();
+  const [nurses, setNurses] = useState<Nurse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  const { actor } = useActor();
   const deleteMutation = useDeleteNurse();
-  const qc = useQueryClient();
 
-  useEffect(() => {
-    if (authed) {
-      qc.invalidateQueries({ queryKey: ["nurses"] });
-      refetch();
+  const fetchNurses = useCallback(async () => {
+    if (!actor) return;
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const result = await actor.listAllNurses();
+      setNurses(result);
+      setLastRefreshed(new Date());
+    } catch (_err) {
+      setFetchError("Failed to load nurses. Please click Refresh.");
+    } finally {
+      setIsLoading(false);
     }
-  }, [authed, qc, refetch]);
+  }, [actor]);
+
+  // Auto-fetch when actor is ready and user is logged in
+  useEffect(() => {
+    if (actor && authed) {
+      fetchNurses();
+    }
+  }, [actor, authed, fetchNurses]);
+
+  // Poll every 4 seconds when logged in
+  useEffect(() => {
+    if (!actor || !authed) return;
+    const interval = setInterval(() => {
+      fetchNurses();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [actor, authed, fetchNurses]);
 
   function login(e: React.FormEvent) {
     e.preventDefault();
@@ -544,6 +573,7 @@ export function AdminDashboardPage() {
       onSuccess: () => {
         toast.success("Nurse profile deleted.");
         setConfirmId(null);
+        fetchNurses();
       },
       onError: () => {
         toast.error("Failed to delete. Please try again.");
@@ -621,27 +651,34 @@ export function AdminDashboardPage() {
             <Shield className="w-5 h-5 text-blue-600" />
             <span className="font-bold text-gray-800">Admin Dashboard</span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                qc.invalidateQueries({ queryKey: ["nurses"] });
-                refetch();
-              }}
-              className="text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg px-3 py-1 flex items-center gap-1"
-              data-ocid="admin.secondary_button"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
-            <button
-              type="button"
-              onClick={logout}
-              className="text-sm text-gray-500 hover:text-gray-800 border border-gray-300 rounded-lg px-3 py-1"
-              data-ocid="admin.button"
-            >
-              Logout
-            </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchNurses}
+                disabled={isLoading}
+                className="text-sm text-blue-600 hover:text-blue-800 border border-blue-300 rounded-lg px-3 py-1 flex items-center gap-1 disabled:opacity-60"
+                data-ocid="admin.secondary_button"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${isLoading ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="text-sm text-gray-500 hover:text-gray-800 border border-gray-300 rounded-lg px-3 py-1"
+                data-ocid="admin.button"
+              >
+                Logout
+              </button>
+            </div>
+            {lastRefreshed && (
+              <span className="text-xs text-gray-400">
+                Last updated: {lastRefreshed.toLocaleTimeString()}
+              </span>
+            )}
           </div>
         </div>
       </header>
@@ -649,14 +686,24 @@ export function AdminDashboardPage() {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <h2 className="text-lg font-semibold text-gray-700 mb-4">
           Registered Nurses
-          {!isLoading && nurses && (
+          {!isLoading && nurses.length > 0 && (
             <span className="ml-2 text-sm font-normal text-gray-400">
               ({nurses.length} total)
             </span>
           )}
         </h2>
 
-        {isLoading && (
+        {/* Fetch error banner */}
+        {fetchError && (
+          <div
+            className="mb-4 bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-4 py-3 text-sm"
+            data-ocid="admin.error_state"
+          >
+            {fetchError}
+          </div>
+        )}
+
+        {isLoading && nurses.length === 0 && (
           <div
             className="text-center py-12 text-gray-400"
             data-ocid="admin.loading_state"
@@ -665,7 +712,7 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        {!isLoading && (!nurses || nurses.length === 0) && (
+        {!isLoading && nurses.length === 0 && !fetchError && (
           <div
             className="text-center py-12 bg-white rounded-xl border"
             data-ocid="admin.empty_state"
@@ -674,7 +721,7 @@ export function AdminDashboardPage() {
           </div>
         )}
 
-        {!isLoading && nurses && nurses.length > 0 && (
+        {nurses.length > 0 && (
           <div className="space-y-3" data-ocid="admin.list">
             {nurses.map((nurse, idx) => {
               let photoUrl: string | undefined;
@@ -796,6 +843,9 @@ export function AdminDashboardPage() {
                     <EditNurseForm
                       nurse={nurse}
                       onClose={() => setEditingNurseId(null)}
+                      onSaved={() => {
+                        fetchNurses();
+                      }}
                     />
                   )}
 

@@ -100,8 +100,13 @@ export interface _SERVICE {
   'listAllServiceProofs' : ActorMethod<[], Array<ServiceProof>>,
   'registerNurse' : ActorMethod<[Nurse], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setNurseAvailability' : ActorMethod<[string, string, boolean], undefined>,
   'submitFeedback' : ActorMethod<[Feedback], undefined>,
   'updateNurse' : ActorMethod<[Nurse], undefined>,
+  'updateNurseLocation' : ActorMethod<
+    [string, string, number, number],
+    undefined
+  >,
   'updateServiceProof' : ActorMethod<[ServiceProof], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;

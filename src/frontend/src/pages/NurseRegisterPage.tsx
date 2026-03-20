@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useActor } from "../hooks/useActor";
 import { useRegisterNurse } from "../hooks/useQueries";
 import { v4 as uuidv4 } from "../utils/uuid";
 
@@ -58,10 +59,12 @@ export function NurseRegisterPage() {
   const { t } = useLanguage();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [success, setSuccess] = useState(false);
+  const [successName, setSuccessName] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [locationState, setLocationState] = useState<LocationState>({
     status: "idle",
   });
+  const { actor, isFetching: actorLoading } = useActor();
   const registerNurse = useRegisterNurse();
 
   const set = (
@@ -124,6 +127,7 @@ export function NurseRegisterPage() {
           ? { latitude: form.latitude, longitude: form.longitude }
           : {}),
       });
+      setSuccessName(form.name);
       setSuccess(true);
       setForm(EMPTY);
       setLocationState({ status: "idle" });
@@ -160,7 +164,9 @@ export function NurseRegisterPage() {
                 {t("register.success.title")}
               </p>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {t("register.success.desc")}
+                {successName
+                  ? `${successName} has been registered. You will appear in the admin dashboard shortly.`
+                  : t("register.success.desc")}
               </p>
             </div>
           </div>
@@ -522,7 +528,7 @@ export function NurseRegisterPage() {
 
             <Button
               type="submit"
-              disabled={registerNurse.isPending}
+              disabled={registerNurse.isPending || actorLoading || !actor}
               className="w-full h-12 text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
               data-ocid="register.submit_button"
             >
@@ -535,6 +541,11 @@ export function NurseRegisterPage() {
                 t("register.submit")
               )}
             </Button>
+            {(!actor || actorLoading) && (
+              <p className="text-xs text-center text-gray-400 mt-1">
+                Connecting to network, please wait...
+              </p>
+            )}
           </form>
         </div>
 

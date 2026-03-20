@@ -11,6 +11,7 @@ import {
   FileVideo,
   Loader2,
   LogIn,
+  MapPin,
   ShieldCheck,
   Upload,
   X,
@@ -26,6 +27,7 @@ import {
   useFindNurseByCredentials,
   useGetNurseServiceProofs,
   useSetNurseAvailability,
+  useUpdateNurseLocation,
 } from "../hooks/useQueries";
 import { v4 as generateUUID } from "../utils/uuid";
 
@@ -117,11 +119,19 @@ export function NurseDashboardPage() {
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "detecting" | "success" | "error"
+  >("idle");
+  const [detectedLocation, setDetectedLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
 
   const availabilityMutation = useSetNurseAvailability();
+  const locationMutation = useUpdateNurseLocation();
   const findMutation = useFindNurseByCredentials();
   const addProofMutation = useAddServiceProof();
   const { data: proofs, isLoading: proofsLoading } = useGetNurseServiceProofs(
@@ -140,7 +150,7 @@ export function NurseDashboardPage() {
         onSuccess: (result) => {
           if (result) {
             setNurse(result);
-            setIsAvailable(!!(result as any).isAvailable);
+            setIsAvailable(!!(result as Nurse).isAvailable);
           } else {
             toast.error(
               "Nurse not found. Please check your registration number and phone.",
@@ -196,6 +206,46 @@ export function NurseDashboardPage() {
     if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
     setVideo(null);
     setVideoPreviewUrl(null);
+  }
+
+  function handleDetectAndSaveLocation() {
+    if (!nurse) return;
+    setLocationStatus("detecting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setDetectedLocation({ lat, lng });
+        locationMutation.mutate(
+          {
+            registrationNumber: nurse.registrationNumber,
+            phone: nurse.phone,
+            latitude: lat,
+            longitude: lng,
+          },
+          {
+            onSuccess: () => {
+              setLocationStatus("success");
+              // Also update the local nurse state so it stays in sync
+              setNurse((prev) =>
+                prev ? { ...prev, latitude: lat, longitude: lng } : prev,
+              );
+              toast.success("Location updated successfully!");
+              setTimeout(() => setLocationStatus("idle"), 4000);
+            },
+            onError: () => {
+              setLocationStatus("error");
+              toast.error("Failed to save location. Please try again.");
+            },
+          },
+        );
+      },
+      () => {
+        setLocationStatus("error");
+        toast.error("Could not detect location. Please allow location access.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
   }
 
   async function handleUpload(e: React.FormEvent) {
@@ -375,7 +425,7 @@ export function NurseDashboardPage() {
 
           {/* Availability Card */}
           <div
-            className={` rounded-3xl border shadow-sm p-6 mb-6 transition-colors ${
+            className={`rounded-3xl border shadow-sm p-6 mb-6 transition-colors ${
               isAvailable
                 ? "bg-green-50 border-green-200"
                 : "bg-gray-50 border-gray-200"
@@ -384,7 +434,9 @@ export function NurseDashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p
-                  className={`text-xs font-semibold uppercase tracking-wide mb-1 ${isAvailable ? "text-green-600" : "text-gray-400"}`}
+                  className={`text-xs font-semibold uppercase tracking-wide mb-1 ${
+                    isAvailable ? "text-green-600" : "text-gray-400"
+                  }`}
                 >
                   {t("dashboard.availability")}
                 </p>
@@ -410,23 +462,96 @@ export function NurseDashboardPage() {
                 <Switch
                   checked={isAvailable}
                   disabled={availabilityMutation.isPending}
-                  onCheckedChange={async (val) => {
-                    try {
-                      await availabilityMutation.mutateAsync({
+                  onCheckedChange={(val) => {
+                    availabilityMutation.mutate(
+                      {
                         registrationNumber: nurse.registrationNumber,
                         phone: nurse.phone,
                         isAvailable: val,
-                      });
-                      setIsAvailable(val);
-                      toast.success(t("dashboard.availability.saved"));
-                    } catch {
-                      toast.error(t("dashboard.availability.error"));
-                    }
+                      },
+                      {
+                        onSuccess: () => {
+                          setIsAvailable(val);
+                          // Also update the nurse object so data is consistent
+                          setNurse((prev) =>
+                            prev ? { ...prev, isAvailable: val } : prev,
+                          );
+                          toast.success(t("dashboard.availability.saved"));
+                        },
+                        onError: () => {
+                          toast.error(t("dashboard.availability.error"));
+                        },
+                      },
+                    );
                   }}
                   data-ocid="nurse_dashboard.toggle"
                 />
               </div>
             </div>
+          </div>
+
+          {/* Update Location Card */}
+          <div className="bg-white rounded-3xl border border-blue-100 shadow-sm p-6 mb-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">
+                  Update My Location
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Tap the button to update your GPS location. This helps
+                  patients find you nearby.
+                </p>
+              </div>
+            </div>
+
+            {locationStatus === "success" && detectedLocation && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-green-700 text-sm"
+                data-ocid="nurse_dashboard.success_state"
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                Location saved: {detectedLocation.lat.toFixed(4)},{" "}
+                {detectedLocation.lng.toFixed(4)}
+              </motion.div>
+            )}
+
+            {locationStatus === "error" && (
+              <div
+                className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-red-700 text-sm"
+                data-ocid="nurse_dashboard.error_state"
+              >
+                <X className="w-4 h-4 shrink-0" />
+                Could not detect location. Please allow location access and try
+                again.
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleDetectAndSaveLocation}
+              disabled={
+                locationStatus === "detecting" || locationMutation.isPending
+              }
+              className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 h-11 text-base font-semibold"
+              data-ocid="nurse_dashboard.button"
+            >
+              {locationStatus === "detecting" || locationMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Detecting location...
+                </>
+              ) : (
+                <>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Detect &amp; Update My Location
+                </>
+              )}
+            </Button>
           </div>
 
           {/* Upload form */}
